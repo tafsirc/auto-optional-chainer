@@ -79,23 +79,46 @@ const ignoredIdentifiers = [
 ];
 /**
  * Processes a code segment by iteratively replacing property accesses
- * of the form "identifier.property" with "identifier?.property",
- * unless the identifier is in the ignored list.
+ * but skips assignments while keeping comparisons.
  */
 function processCodeSegment(segment) {
-    let newSegment = segment;
-    const regex = /([a-zA-Z_]\w*)\.(\w+)/g;
-    let replaced;
-    do {
-        replaced = newSegment;
-        newSegment = replaced.replace(regex, (match, identifier, property) => {
-            if (ignoredIdentifiers.includes(identifier)) {
-                return match;
-            }
-            return `${identifier}?.${property}`;
+    // First step: Find all assignments
+    const assignmentPositions = new Set();
+    const assignmentRegex = /\b\w+\.\w+\s*=(?!=)/g;
+    let match;
+    while ((match = assignmentRegex.exec(segment)) !== null) {
+        assignmentPositions.add(match.index);
+    }
+    // Second step: Process property accesses
+    const dotAccessRegex = /(\b\w+)\.(\w+)/g;
+    let result = segment;
+    let allMatches = [];
+    // Collect all matches first
+    while ((match = dotAccessRegex.exec(segment)) !== null) {
+        allMatches.push({
+            fullMatch: match[0],
+            identifier: match[1],
+            property: match[2],
+            index: match.index,
+            length: match[0].length,
         });
-    } while (newSegment !== replaced);
-    return newSegment;
+    }
+    // Process matches in reverse order to maintain indices
+    allMatches.reverse().forEach(({ fullMatch, identifier, property, index }) => {
+        // Skip if this is part of an assignment or ignored identifier
+        let isAssignment = false;
+        assignmentPositions.forEach((pos) => {
+            if (index >= pos && index <= pos + fullMatch.length) {
+                isAssignment = true;
+            }
+        });
+        if (!isAssignment && !ignoredIdentifiers.includes(identifier)) {
+            const before = result.slice(0, index);
+            const after = result.slice(index + fullMatch.length);
+            result = before + `${identifier}?.${property}` + after;
+        }
+    });
+    return result;
 }
 function splitByStringLiterals(text) {
     const segments = [];
@@ -150,7 +173,6 @@ function splitByStringLiterals(text) {
             i++;
         }
         else if (state === "backtick") {
-            // In backtick strings, handle template interpolation: ${ ... }
             if (char === "\\") {
                 current += char;
                 i++;
