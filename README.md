@@ -34,7 +34,7 @@ Currently, this extension does not provide configurable settings.
 
 ## Release Notes
 
-### 0.0.4
+### 0.0.5
 
 - Initial release of **AutoOptionalChainer**.
 - Supports JavaScript, TypeScript, JSX, and TSX files.

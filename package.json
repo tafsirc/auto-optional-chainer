@@ -3,8 +3,12 @@
   "publisher": "ctafsiras",
   "displayName": "Auto Optional Chainer",
   "description": "This is an extension to put optional chaining automatically in js/ts where it needs.",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "icon": "assets/logo.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ctafsiras/auto-optional-chainer"
+  },
   "engines": {
     "vscode": "^1.97.0"
   },
