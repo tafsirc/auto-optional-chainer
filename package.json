@@ -3,7 +3,7 @@
   "publisher": "ctafsiras",
   "displayName": "Auto Optional Chainer",
   "description": "This is an extension to put optional chaining automatically in js/ts where it needs.",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "icon": "assets/logo.png",
   "repository": {
     "type": "git",
@@ -22,6 +22,29 @@
       {
         "command": "AutoOptionalChainer.applyOptionalChaining",
         "title": "Apply Optional Chaining"
+      }
+    ],
+    "configuration": {
+      "title": "Auto Optional Chainer",
+      "properties": {
+        "autoOptionalChainer.applyOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically apply optional chaining when saving supported files"
+        },
+        "autoOptionalChainer.enableShortcut": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable keyboard shortcut for applying optional chaining"
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "AutoOptionalChainer.applyOptionalChaining",
+        "key": "ctrl+shift+o",
+        "mac": "cmd+shift+o",
+        "when": "editorTextFocus && config.autoOptionalChainer.enableShortcut"
       }
     ]
   },

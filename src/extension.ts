@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 
 export function activate(context: vscode.ExtensionContext): void {
-  const disposable = vscode.commands.registerCommand(
+  // Command registration for palette and shortcut
+  const commandDisposable = vscode.commands.registerCommand(
     "AutoOptionalChainer.applyOptionalChaining",
     async () => {
       const editor = vscode.window.activeTextEditor;
@@ -19,7 +20,22 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   );
 
-  context.subscriptions.push(disposable);
+  context.subscriptions.push(commandDisposable);
+
+  // Register onSave listener
+  const onSaveDisposable = vscode.workspace.onDidSaveTextDocument(
+    async (document) => {
+      const config = vscode.workspace.getConfiguration("autoOptionalChainer");
+      const applyOnSave = config.get<boolean>("applyOnSave");
+
+      if (applyOnSave && isSupportedDocument(document)) {
+        await applyOptionalChaining(document);
+        // No need to show message on save to avoid spamming notifications
+      }
+    }
+  );
+
+  context.subscriptions.push(onSaveDisposable);
 }
 
 function isSupportedDocument(document: vscode.TextDocument): boolean {
