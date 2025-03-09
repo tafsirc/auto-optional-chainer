@@ -22,7 +22,7 @@
 
 ## Requirements
 
-- **Visual Studio Code** version **1.97.0** or later.
+- **Visual Studio Code** version **1.96.0** or later.
 - **Node.js** and **npm** for development and testing.
 
 ## Configuration
@@ -46,7 +46,7 @@ To modify these settings:
 
 ## Release Notes
 
-### 0.0.6
+### 0.0.7
 
 - Initial release of **AutoOptionalChainer**.
 - Supports JavaScript, TypeScript, JSX, and TSX files.

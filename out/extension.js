@@ -1,4 +1,24 @@
 "use strict";
+/**
+ * Auto Optional Chaining Extension
+ * ------------------------------
+ * This extension automatically adds optional chaining operators (?.) to property
+ * accesses in JavaScript/TypeScript code. It helps prevent "Cannot read property
+ * of undefined" errors by safely handling potentially undefined values.
+ *
+ * Features:
+ * - Adds optional chaining on command palette/shortcut
+ * - Can automatically apply on file save
+ * - Smart handling of string literals and template strings
+ * - Preserves existing optional chaining
+ * - Ignores standard library objects
+ *
+ * Supported File Types:
+ * - JavaScript (.js)
+ * - TypeScript (.ts)
+ * - JSX (.jsx)
+ * - TSX (.tsx)
+ */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -35,9 +55,17 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
+// Import the vscode API which provides access to the VS Code extensibility API
 const vscode = __importStar(require("vscode"));
+/**
+ * Extension Activation Event
+ * Called when the extension is activated by VS Code
+ * Registers command palette action and file save handler
+ * @param context The extension context provided by VS Code for registering disposables
+ */
 function activate(context) {
-    // Command registration for palette and shortcut
+    // Register command for the command palette and keyboard shortcut
+    // This enables users to manually trigger the optional chaining transformation
     const commandDisposable = vscode.commands.registerCommand("AutoOptionalChainer.applyOptionalChaining", async () => {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -54,7 +82,8 @@ function activate(context) {
         }
     });
     context.subscriptions.push(commandDisposable);
-    // Register onSave listener
+    // Register a listener for document save events
+    // This enables automatic application of optional chaining when files are saved
     const onSaveDisposable = vscode.workspace.onDidSaveTextDocument(async (document) => {
         const config = vscode.workspace.getConfiguration("autoOptionalChainer");
         const applyOnSave = config.get("applyOnSave");
@@ -65,6 +94,11 @@ function activate(context) {
     });
     context.subscriptions.push(onSaveDisposable);
 }
+/**
+ * Checks if the given document type is supported for optional chaining transformation
+ * @param document The VS Code text document to check
+ * @returns true if the document is a JavaScript or TypeScript file (including React variants)
+ */
 function isSupportedDocument(document) {
     const supportedLanguageIds = [
         "javascript",
@@ -75,7 +109,8 @@ function isSupportedDocument(document) {
     return supportedLanguageIds.includes(document.languageId);
 }
 function deactivate() { }
-// Array of identifiers to ignore during the replacement.
+// List of built-in JavaScript objects and commonly used globals
+// These are skipped during optional chaining transformation to prevent unnecessary changes
 const ignoredIdentifiers = [
     "console",
     "Math",
@@ -89,22 +124,35 @@ const ignoredIdentifiers = [
     "JSON",
 ];
 /**
- * Processes a code segment by iteratively replacing property accesses
- * but skips assignments while keeping comparisons.
+ * Processes a code segment to add optional chaining operators
+ * Handles complex cases like:
+ * - Skipping property assignments (e.g., obj.prop = value)
+ * - Preserving comparisons (e.g., obj.prop === value)
+ * - Ignoring built-in objects (e.g., console.log)
+ *
+ * @param segment The code segment to process
+ * @returns The processed code segment with optional chaining added
+ *
+ * Example:
+ * Input:  user.profile.name
+ * Output: user?.profile?.name
  */
 function processCodeSegment(segment) {
-    // First step: Find all assignments
+    // First step: Identify all property assignments in the code
+    // This prevents adding optional chaining to the left side of assignments
     const assignmentPositions = new Set();
     const assignmentRegex = /\b\w+\.\w+\s*=(?!=)/g;
     let match;
     while ((match = assignmentRegex.exec(segment)) !== null) {
         assignmentPositions.add(match.index);
     }
-    // Second step: Process property accesses
+    // Second step: Process each property access chain
+    // Adds optional chaining while respecting assignments and ignored identifiers
     const dotAccessRegex = /(\b\w+)\.(\w+)/g;
     let result = segment;
     let allMatches = [];
-    // Collect all matches first
+    // Collect all property access matches before processing
+    // This allows us to handle nested property chains correctly
     while ((match = dotAccessRegex.exec(segment)) !== null) {
         allMatches.push({
             fullMatch: match[0],
@@ -114,7 +162,8 @@ function processCodeSegment(segment) {
             length: match[0].length,
         });
     }
-    // Process matches in reverse order to maintain indices
+    // Process matches from end to start to maintain correct string indices
+    // This prevents index shifts from affecting subsequent replacements
     allMatches.reverse().forEach(({ fullMatch, identifier, property, index }) => {
         // Skip if this is part of an assignment or ignored identifier
         let isAssignment = false;
@@ -138,30 +187,40 @@ function splitByStringLiterals(text) {
     let i = 0;
     while (i < text.length) {
         const char = text[i];
+        // Main state machine for processing source code and string literals
         if (state === "normal") {
             if (char === '"' || char === "'" || char === "`") {
+                // When we encounter a quote character while in normal code
                 if (current) {
+                    // Push any accumulated code before the string starts
                     segments.push({ text: current, isCode: true });
                     current = "";
                 }
+                // Determine the type of string literal and switch state
                 state = char === '"' ? "double" : char === "'" ? "single" : "backtick";
                 current += char;
                 i++;
             }
             else {
+                // Continue accumulating normal code characters
                 current += char;
                 i++;
             }
         }
         else if (state === "single") {
+            // Processing characters inside single-quoted string
             current += char;
             if (char === "\\") {
+                // Handle escaped characters in single quotes
+                // Example: 'It\'s a string'
                 i++;
                 if (i < text.length) {
                     current += text[i];
                 }
             }
             else if (char === "'") {
+                // End of single-quoted string reached
+                // Add the complete string as a non-code segment
                 segments.push({ text: current, isCode: false, type: "single" });
                 current = "";
                 state = "normal";
@@ -169,14 +228,18 @@ function splitByStringLiterals(text) {
             i++;
         }
         else if (state === "double") {
+            // Processing characters inside double-quoted string
             current += char;
             if (char === "\\") {
+                // Handle escaped characters in double quotes
+                // Example: "He said \"Hello\""
                 i++;
                 if (i < text.length) {
                     current += text[i];
                 }
             }
             else if (char === '"') {
+                // End of double-quoted string reached
                 segments.push({ text: current, isCode: false, type: "double" });
                 current = "";
                 state = "normal";
@@ -184,6 +247,7 @@ function splitByStringLiterals(text) {
             i++;
         }
         else if (state === "backtick") {
+            // Processing characters inside template literal
             if (char === "\\") {
                 current += char;
                 i++;
@@ -193,20 +257,25 @@ function splitByStringLiterals(text) {
                 i++;
             }
             else if (char === "$" && text[i + 1] === "{") {
+                // Found template literal interpolation ${...}
                 if (current) {
                     segments.push({ text: current, isCode: false, type: "backtick" });
                     current = "";
                 }
                 segments.push({ text: "${", isCode: false, type: "backtick" });
                 i += 2;
+                // Track nested braces to handle complex expressions
+                // Example: `${obj.method({key: value})}`
                 let braceCount = 1;
                 let codeSegment = "";
                 while (i < text.length && braceCount > 0) {
                     const c = text[i];
                     if (c === "{") {
+                        // Handle nested object literals or blocks
                         braceCount++;
                     }
                     else if (c === "}") {
+                        // Track closing braces to find end of interpolation
                         braceCount--;
                         if (braceCount === 0) {
                             break;
@@ -220,6 +289,7 @@ function splitByStringLiterals(text) {
                 i++;
             }
             else if (char === "`") {
+                // End of template literal reached
                 current += char;
                 segments.push({ text: current, isCode: false, type: "backtick" });
                 current = "";
@@ -227,37 +297,61 @@ function splitByStringLiterals(text) {
                 i++;
             }
             else {
+                // Continue accumulating template literal content
                 current += char;
                 i++;
             }
         }
     }
+    // Handle any remaining text after processing is complete
     if (current) {
         segments.push({
             text: current,
-            isCode: state === "normal",
-            type: state === "normal" ? undefined : state,
+            isCode: state === "normal", // Only treat as code if we ended in normal state
+            type: state === "normal" ? undefined : state, // Preserve string type if in a string
         });
     }
     return segments;
 }
 /**
- * Applies optional chaining to property accesses in the document,
- * but skips normal string literals while still processing code inside
- * template literal interpolations.
+ * Main transformation function that applies optional chaining to a document
+ * This function orchestrates the entire transformation process in these steps:
+ * 1. Extract document text
+ * 2. Split into code/string segments
+ * 3. Process code segments
+ * 4. Reassemble and apply changes
+ *
+ * Handles:
+ * - Code vs string literal separation
+ * - Property access transformation
+ * - Template literal interpolation
+ * - Workspace edit application
+ *
+ * @param document The VS Code text document to transform
+ * @returns Promise that resolves when the transformation is complete
  */
 async function applyOptionalChaining(document) {
+    // Get the full text content of the document
     const originalText = document.getText();
+    // Split the text into processable segments (code vs. strings)
     const segments = splitByStringLiterals(originalText);
+    // Process each segment:
+    // - Apply optional chaining to code segments
+    // - Leave string segments unchanged
     const processed = segments
         .map((seg) => (seg.isCode ? processCodeSegment(seg.text) : seg.text))
         .join("");
+    // Skip if no changes were made to avoid unnecessary file updates
     if (processed === originalText) {
         return;
     }
+    // Create a workspace edit to apply the changes
     const edit = new vscode.WorkspaceEdit();
+    // Create a range that covers the entire document
     const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(originalText.length));
+    // Replace the entire document content with the processed version
     edit.replace(document.uri, fullRange, processed);
+    // Apply the edit to the document
     await vscode.workspace.applyEdit(edit);
 }
 //# sourceMappingURL=extension.js.map
