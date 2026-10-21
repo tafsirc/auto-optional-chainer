@@ -120,6 +120,28 @@ See [CHANGELOG.md](CHANGELOG.md) for full version history.
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines, and read our [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Contributors
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/tafsirc"><img src="https://avatars.githubusercontent.com/u/74620023?v=4" width="100px;" alt="Tafsir Chowdhury"/><br /><sub><b>Tafsir Chowdhury</b></sub></a><br /><a href="https://github.com/tafsirc/auto-optional-chainer/commits?author=tafsirc" title="Code">💻</a> <a href="https://github.com/tafsirc/auto-optional-chainer/commits?author=tafsirc" title="Documentation">📖</a> <a href="#maintenance-tafsirc" title="Maintenance">🚧</a></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind are welcome!
+
 ## Security
 
 If you discover a security vulnerability, please review our [Security Policy](SECURITY.md) to report it responsibly.

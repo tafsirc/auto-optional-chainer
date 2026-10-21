@@ -1,0 +1,25 @@
+{
+  "projectName": "auto-optional-chainer",
+  "projectOwner": "tafsirc",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "tafsirc",
+      "name": "Tafsir Chowdhury",
+      "avatar_url": "https://avatars.githubusercontent.com/u/74620023?v=4",
+      "profile": "https://github.com/tafsirc",
+      "contributions": [
+        "code",
+        "doc",
+        "maintenance"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7
+}
