@@ -105,7 +105,7 @@ Feel free to visit the [GitHub](https://github.com/tafsirc) profile.
 
 ## License
 
-MIT License
+This project is licensed under the [MIT License](LICENSE.md) - see the file for details. Copyright (c) Tafsir Chowdhury.
 
 ## Further Reading
 
