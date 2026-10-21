@@ -77,20 +77,22 @@ export function processCodeSegment(
       });
     }
 
-    allMatches.reverse().forEach(({ fullMatch, identifier, property, index }) => {
-      let isAssignment = false;
-      assignmentPositions.forEach((pos) => {
-        if (index >= pos && index <= pos + fullMatch.length) {
-          isAssignment = true;
+    allMatches
+      .reverse()
+      .forEach(({ fullMatch, identifier, property, index }) => {
+        let isAssignment = false;
+        assignmentPositions.forEach((pos) => {
+          if (index >= pos && index <= pos + fullMatch.length) {
+            isAssignment = true;
+          }
+        });
+
+        if (!isAssignment && !activeIgnored.has(identifier)) {
+          const before = current.slice(0, index);
+          const after = current.slice(index + fullMatch.length);
+          current = before + `${identifier}?.${property}` + after;
         }
       });
-
-      if (!isAssignment && !activeIgnored.has(identifier)) {
-        const before = current.slice(0, index);
-        const after = current.slice(index + fullMatch.length);
-        current = before + `${identifier}?.${property}` + after;
-      }
-    });
   }
 
   return current;

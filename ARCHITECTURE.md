@@ -36,6 +36,7 @@ flowchart TD
 ## Architecture Layers
 
 ### 1. Extension Binding Layer (`src/extension.ts`)
+
 - **`activate(context)`**: Registers commands and workspace listeners:
   - `AutoOptionalChainer.applyOptionalChaining`
   - `onDidSaveTextDocument` (conditionally active when `applyOnSave` is enabled)
@@ -43,6 +44,7 @@ flowchart TD
 - **`applyOptionalChaining(document)`**: Reads the active editor document, invokes `transformSourceCode`, and applies changes as an atomic `vscode.WorkspaceEdit`.
 
 ### 2. Core Transformation Engine (`src/core/transformer.ts`)
+
 - Decoupled from the VS Code API so that transformation logic can be tested in milliseconds in any Node environment.
 - **`splitByStringLiterals(text)`**: A finite state-machine tokenizer that separates code tokens from single quotes (`'...'`), double quotes (`"..."`), and template literals (`` `...` ``). For template literals, `${...}` interpolation expressions are processed while literal text is preserved.
 - **`processCodeSegment(segment, customIgnored?)`**: Iterative processor that safely adds `?.` while respecting:
@@ -52,5 +54,6 @@ flowchart TD
 - **`transformSourceCode(source, customIgnored?)`**: High-level orchestrator function.
 
 ## Testing Strategy
+
 - **Unit Tests**: Run with `npm run test:unit` using Mocha and `c8` coverage. Executes in <10ms with zero Electron overhead.
 - **Integration Tests**: Run with `npm test` using `@vscode/test-cli` inside the VS Code development host.
