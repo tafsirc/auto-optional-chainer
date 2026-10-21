@@ -86,10 +86,12 @@ Alternatively, search for **Auto Optional Chainer** in the Extensions view (`Ctr
 
 ## Configuration
 
-This extension provides the following settings:
+This extension provides the following configurable settings in VS Code (`Ctrl+,` or `Cmd+,`):
 
-- `autoOptionalChainer.applyOnSave`: Enable/disable automatic application of optional chaining when saving supported files.
-- `autoOptionalChainer.enableShortcut`: Enable/disable keyboard shortcut (Ctrl+Shift+O / Cmd+Shift+O) for applying optional chaining.
+| Setting | Type | Default | Description |
+| :--- | :---: | :---: | :--- |
+| `autoOptionalChainer.applyOnSave` | `boolean` | `false` | Automatically apply optional chaining when saving supported files |
+| `autoOptionalChainer.enableShortcut` | `boolean` | `false` | Enable keyboard shortcut (`Ctrl+Shift+O` / `Cmd+Shift+O`) for applying optional chaining |
 
 To modify these settings:
 
