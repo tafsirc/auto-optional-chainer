@@ -11,6 +11,10 @@
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 
+<p align="center">
+  <img src="assets/demo.svg" alt="Auto Optional Chainer in Action" width="100%" />
+</p>
+
 ## Introduction
 
 **Auto Optional Chainer** is a Visual Studio Code extension that automatically adds optional chaining (`?.`) in JavaScript and TypeScript code where needed. This helps prevent runtime errors caused by accessing properties on `undefined` or `null` values.
