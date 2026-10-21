@@ -8,7 +8,10 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,5 +31,10 @@ jobs:
       - name: Lint source code
         run: npm run lint
 
-      - name: Run extension tests
+      - name: Run extension tests (Linux)
+        if: runner.os == 'Linux'
         run: xvfb-run -a npm test
+
+      - name: Run extension tests (macOS & Windows)
+        if: runner.os != 'Linux'
+        run: npm test
