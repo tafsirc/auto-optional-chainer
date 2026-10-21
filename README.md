@@ -78,6 +78,8 @@ To modify these settings:
 
 ## Release Notes
 
+See [CHANGELOG.md](CHANGELOG.md) for full version history.
+
 ### 0.0.7
 
 - Initial release of **AutoOptionalChainer**.
