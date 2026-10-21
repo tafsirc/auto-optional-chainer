@@ -34,4 +34,11 @@ suite("Core Transformer Test Suite", () => {
     const expected = "const msg = `User: ${user?.name}`;";
     assert.strictEqual(transformSourceCode(input), expected);
   });
+
+  test("Should respect custom ignored identifiers", () => {
+    const custom = new Set(["customGlobal", "appConfig"]);
+    const input = "customGlobal.method(); otherObj.user.name;";
+    const expected = "customGlobal.method(); otherObj?.user?.name;";
+    assert.strictEqual(transformSourceCode(input, custom), expected);
+  });
 });
