@@ -91,9 +91,12 @@ export function activate(context: vscode.ExtensionContext): void {
       const customIgnored = getCustomIgnoredIdentifiers();
       const processed = transformSourceCode(selectedText, customIgnored);
       if (processed !== selectedText) {
-        await editor.edit((editBuilder) => {
-          editBuilder.replace(selection, processed);
-        });
+        await editor.edit(
+          (editBuilder) => {
+            editBuilder.replace(selection, processed);
+          },
+          { undoStopBefore: true, undoStopAfter: true }
+        );
         vscode.window.showInformationMessage(
           "Optional Chaining Applied to Selection"
         );
@@ -218,18 +221,26 @@ export async function applyOptionalChaining(
     return;
   }
 
-  // Create a workspace edit to apply the changes
-  const edit = new vscode.WorkspaceEdit();
+  // If the document is open in a visible editor, apply via editor.edit with atomic undo stops
+  const visibleEditor = vscode.window.visibleTextEditors.find(
+    (e) => e.document.uri.toString() === document.uri.toString()
+  );
 
-  // Create a range that covers the entire document
   const fullRange = new vscode.Range(
     document.positionAt(0),
     document.positionAt(originalText.length)
   );
 
-  // Replace the entire document content with the processed version
-  edit.replace(document.uri, fullRange, processed);
-
-  // Apply the edit to the document
-  await vscode.workspace.applyEdit(edit);
+  if (visibleEditor) {
+    await visibleEditor.edit(
+      (editBuilder) => {
+        editBuilder.replace(fullRange, processed);
+      },
+      { undoStopBefore: true, undoStopAfter: true }
+    );
+  } else {
+    const edit = new vscode.WorkspaceEdit();
+    edit.replace(document.uri, fullRange, processed);
+    await vscode.workspace.applyEdit(edit);
+  }
 }
