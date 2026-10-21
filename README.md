@@ -14,6 +14,18 @@
 
 **Auto Optional Chainer** is a Visual Studio Code extension that automatically adds optional chaining (`?.`) in JavaScript and TypeScript code where needed. This helps prevent runtime errors caused by accessing properties on `undefined` or `null` values.
 
+### Example
+
+**Before:**
+```javascript
+const street = user.address.street;
+```
+
+**After:**
+```javascript
+const street = user?.address?.street;
+```
+
 ## Features
 
 - Automatically inserts optional chaining in JavaScript and TypeScript files.
