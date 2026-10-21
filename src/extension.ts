@@ -66,6 +66,40 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(commandDisposable);
 
+  // Register command to apply optional chaining only to selected text
+  const selectionCommandDisposable = vscode.commands.registerCommand(
+    "AutoOptionalChainer.applyToSelection",
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showErrorMessage("No active editor found");
+        return;
+      }
+      const document = editor.document;
+      if (!isSupportedDocument(document)) {
+        vscode.window.showErrorMessage("File type not supported");
+        return;
+      }
+      const selection = editor.selection;
+      if (selection.isEmpty) {
+        vscode.window.showInformationMessage("No text selected");
+        return;
+      }
+      const selectedText = document.getText(selection);
+      const processed = transformSourceCode(selectedText);
+      if (processed !== selectedText) {
+        await editor.edit((editBuilder) => {
+          editBuilder.replace(selection, processed);
+        });
+        vscode.window.showInformationMessage(
+          "Optional Chaining Applied to Selection"
+        );
+      }
+    }
+  );
+
+  context.subscriptions.push(selectionCommandDisposable);
+
   // Register a listener for document save events
   // This enables automatic application of optional chaining when files are saved
   const onSaveDisposable = vscode.workspace.onDidSaveTextDocument(
