@@ -7,7 +7,11 @@
 <p align="center">
   <a href="https://github.com/tafsirc/auto-optional-chainer/actions/workflows/ci.yml"><img src="https://github.com/tafsirc/auto-optional-chainer/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://marketplace.visualstudio.com/items?itemName=ctafsiras.AutoOptionalChainer"><img src="https://img.shields.io/visual-studio-marketplace/v/ctafsiras.AutoOptionalChainer.svg" alt="VS Code Marketplace Version" /></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ctafsiras.AutoOptionalChainer"><img src="https://img.shields.io/visual-studio-marketplace/i/ctafsiras.AutoOptionalChainer.svg?color=success" alt="Marketplace Installs" /></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ctafsiras.AutoOptionalChainer"><img src="https://img.shields.io/visual-studio-marketplace/r/ctafsiras.AutoOptionalChainer.svg" alt="Rating" /></a>
+  <a href="https://github.com/tafsirc/auto-optional-chainer/stargazers"><img src="https://img.shields.io/github/stars/tafsirc/auto-optional-chainer?style=flat&logo=github" alt="GitHub Stars" /></a>
   <a href="https://github.com/tafsirc/auto-optional-chainer"><img src="https://img.shields.io/badge/Coverage-88%25-brightgreen.svg" alt="Coverage" /></a>
+  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 
