@@ -38,6 +38,10 @@
       {
         "command": "AutoOptionalChainer.applyToSelection",
         "title": "Apply Optional Chaining to Selection"
+      },
+      {
+        "command": "AutoOptionalChainer.toggleApplyOnSave",
+        "title": "Toggle Apply on Save"
       }
     ],
     "configuration": {

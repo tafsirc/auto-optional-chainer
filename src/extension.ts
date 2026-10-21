@@ -101,6 +101,57 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(selectionCommandDisposable);
 
+  // Status Bar Item setup
+  const statusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    100
+  );
+  statusBarItem.command = "AutoOptionalChainer.toggleApplyOnSave";
+  context.subscriptions.push(statusBarItem);
+
+  const updateStatusBar = (editor?: vscode.TextEditor): void => {
+    if (!editor || !isSupportedDocument(editor.document)) {
+      statusBarItem.hide();
+      return;
+    }
+    const config = vscode.workspace.getConfiguration("autoOptionalChainer");
+    const onSave = config.get<boolean>("applyOnSave", false);
+    statusBarItem.text = onSave
+      ? "$(check) AOC: Save"
+      : "$(circle-slash) AOC: Manual";
+    statusBarItem.tooltip = `Auto Optional Chainer: ${onSave ? "Auto-apply on Save" : "Manual trigger"} (Click to toggle)`;
+    statusBarItem.show();
+  };
+
+  const toggleCommand = vscode.commands.registerCommand(
+    "AutoOptionalChainer.toggleApplyOnSave",
+    async () => {
+      const config = vscode.workspace.getConfiguration("autoOptionalChainer");
+      const current = config.get<boolean>("applyOnSave", false);
+      await config.update(
+        "applyOnSave",
+        !current,
+        vscode.ConfigurationTarget.Global
+      );
+      vscode.window.showInformationMessage(
+        `Auto Optional Chainer: Auto on Save is now ${!current ? "Enabled" : "Disabled"}`
+      );
+      updateStatusBar(vscode.window.activeTextEditor);
+    }
+  );
+  context.subscriptions.push(toggleCommand);
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(updateStatusBar),
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("autoOptionalChainer")) {
+        updateStatusBar(vscode.window.activeTextEditor);
+      }
+    })
+  );
+
+  updateStatusBar(vscode.window.activeTextEditor);
+
   // Register a listener for document save events
   // This enables automatic application of optional chaining when files are saved
   const onSaveDisposable = vscode.workspace.onDidSaveTextDocument(
