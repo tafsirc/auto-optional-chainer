@@ -1,6 +1,8 @@
 {
   "name": "AutoOptionalChainer",
   "publisher": "ctafsiras",
+  "author": "Tafsir Chowdhury",
+  "license": "MIT",
   "displayName": "Auto Optional Chainer",
   "description": "This is an extension to put optional chaining automatically in js/ts where it needs.",
   "version": "0.0.7",
