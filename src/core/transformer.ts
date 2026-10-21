@@ -230,3 +230,25 @@ export function transformSourceCode(
     )
     .join("");
 }
+
+/**
+ * Transforms Vue, Svelte, or Astro component files by applying optional chaining
+ * specifically within <script> blocks while preserving templates and styles.
+ *
+ * @param source Component source code
+ * @param customIgnored Optional custom identifiers to ignore
+ * @returns Transformed component code
+ */
+export function transformComponentDocument(
+  source: string,
+  customIgnored?: Set<string>
+): string {
+  const scriptRegex = /(<script\b[^>]*>)([\s\S]*?)(<\/script>)/gi;
+  return source.replace(
+    scriptRegex,
+    (_match, openTag: string, scriptBody: string, closeTag: string) => {
+      const transformedScript = transformSourceCode(scriptBody, customIgnored);
+      return `${openTag}${transformedScript}${closeTag}`;
+    }
+  );
+}

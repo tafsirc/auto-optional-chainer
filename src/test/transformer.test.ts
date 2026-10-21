@@ -1,6 +1,7 @@
 import * as assert from "assert";
 import {
   transformSourceCode,
+  transformComponentDocument,
   processCodeSegment,
   splitByStringLiterals,
   ignoredIdentifiers,
@@ -40,5 +41,33 @@ suite("Core Transformer Test Suite", () => {
     const input = "customGlobal.method(); otherObj.user.name;";
     const expected = "customGlobal.method(); otherObj?.user?.name;";
     assert.strictEqual(transformSourceCode(input, custom), expected);
+  });
+
+  test("Should transform script blocks in Vue/Svelte/Astro components", () => {
+    const component = `<template>
+  <div class="user-card">{{ user.name }}</div>
+</template>
+
+<script lang="ts">
+const name = user.profile.name;
+</script>
+
+<style>
+.user-card { color: red; }
+</style>`;
+
+    const expected = `<template>
+  <div class="user-card">{{ user.name }}</div>
+</template>
+
+<script lang="ts">
+const name = user?.profile?.name;
+</script>
+
+<style>
+.user-card { color: red; }
+</style>`;
+
+    assert.strictEqual(transformComponentDocument(component), expected);
   });
 });

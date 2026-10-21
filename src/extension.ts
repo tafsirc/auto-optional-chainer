@@ -22,6 +22,7 @@
 import * as vscode from "vscode";
 import {
   transformSourceCode,
+  transformComponentDocument,
   ignoredIdentifiers,
   processCodeSegment,
   splitByStringLiterals,
@@ -31,6 +32,7 @@ import {
 // Re-export core transformer functions and types for consumers and tests
 export {
   transformSourceCode,
+  transformComponentDocument,
   ignoredIdentifiers,
   processCodeSegment,
   splitByStringLiterals,
@@ -180,6 +182,9 @@ export function isSupportedDocument(document: vscode.TextDocument): boolean {
     "typescript",
     "javascriptreact",
     "typescriptreact",
+    "vue",
+    "svelte",
+    "astro",
   ];
   return supportedLanguageIds.includes(document.languageId);
 }
@@ -203,7 +208,10 @@ export async function applyOptionalChaining(
 ): Promise<void> {
   const originalText = document.getText();
   const customIgnored = getCustomIgnoredIdentifiers();
-  const processed = transformSourceCode(originalText, customIgnored);
+  const isComponent = ["vue", "svelte", "astro"].includes(document.languageId);
+  const processed = isComponent
+    ? transformComponentDocument(originalText, customIgnored)
+    : transformSourceCode(originalText, customIgnored);
 
   // Skip if no changes were made to avoid unnecessary file updates
   if (processed === originalText) {
