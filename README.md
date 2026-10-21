@@ -36,6 +36,16 @@ const street = user?.address?.street;
 - Optional auto-apply on file save.
 - Configurable keyboard shortcut (Ctrl+Shift+O / Cmd+Shift+O).
 
+## Installation
+
+Install via the VS Code Quick Open:
+1. Press `Ctrl+P` (or `Cmd+P` on macOS).
+2. Paste the following command and press Enter:
+   ```bash
+   ext install ctafsiras.AutoOptionalChainer
+   ```
+Alternatively, search for **Auto Optional Chainer** in the Extensions view (`Ctrl+Shift+X` / `Cmd+Shift+X`).
+
 ## Usage
 
 1. Open a JavaScript or TypeScript file in VS Code.
