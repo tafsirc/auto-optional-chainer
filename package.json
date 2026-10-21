@@ -34,6 +34,10 @@
       {
         "command": "AutoOptionalChainer.applyOptionalChaining",
         "title": "Apply Optional Chaining"
+      },
+      {
+        "command": "AutoOptionalChainer.applyToSelection",
+        "title": "Apply Optional Chaining to Selection"
       }
     ],
     "configuration": {
