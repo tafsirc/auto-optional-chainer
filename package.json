@@ -9,7 +9,7 @@
   "icon": "assets/logo.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ctafsiras/auto-optional-chainer"
+    "url": "https://github.com/tafsirc/auto-optional-chainer"
   },
   "engines": {
     "vscode": "^1.96.0"
