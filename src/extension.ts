@@ -87,7 +87,7 @@ export function deactivate(): void {}
 
 // List of built-in JavaScript objects and commonly used globals
 // These are skipped during optional chaining transformation to prevent unnecessary changes
-const ignoredIdentifiers: string[] = [
+const ignoredIdentifiers = new Set<string>([
   "console",
   "Math",
   "Number",
@@ -98,7 +98,7 @@ const ignoredIdentifiers: string[] = [
   "Array",
   "RegExp",
   "JSON",
-];
+]);
 
 /**
  * Processes a code segment to add optional chaining operators
@@ -154,7 +154,7 @@ export function processCodeSegment(segment: string): string {
       }
     });
 
-    if (!isAssignment && !ignoredIdentifiers.includes(identifier)) {
+    if (!isAssignment && !ignoredIdentifiers.has(identifier)) {
       const before = result.slice(0, index);
       const after = result.slice(index + fullMatch.length);
       result = before + `${identifier}?.${property}` + after;
