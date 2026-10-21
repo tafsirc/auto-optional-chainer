@@ -1,0 +1,36 @@
+name: "📖 Documentation Improvement"
+description: "Suggest improvements, report errors, or add missing guides in documentation"
+title: "[DOCS]: "
+labels: ["documentation", "good first issue"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping keep our documentation clear, accurate, and welcoming!
+  - type: dropdown
+    id: doc_type
+    attributes:
+      label: Which document needs improvement?
+      options:
+        - README.md
+        - CONTRIBUTING.md
+        - ARCHITECTURE.md
+        - ROADMAP.md
+        - Other / Code Docstrings
+    validations:
+      required: true
+  - type: textarea
+    id: issue_description
+    attributes:
+      label: Description of the Documentation Issue
+      description: What is inaccurate, missing, or could be phrased better?
+      placeholder: "The section on..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_change
+    attributes:
+      label: Suggested Improvement
+      description: Provide the suggested replacement text or outline.
+    validations:
+      required: true
