@@ -61,6 +61,7 @@ Please note that this project is released with a [Code of Conduct](CODE_OF_CONDU
 We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (`<type>(<scope>): <description>`).
 
 ### Allowed Types:
+
 - `feat`: A new feature or capability
 - `fix`: A bug fix
 - `docs`: Documentation changes only
@@ -73,6 +74,7 @@ We follow the [Conventional Commits](https://www.conventionalcommits.org/) speci
 - `chore`: Maintenance tasks and config updates
 
 ### Example Commit Messages:
+
 ```bash
 feat: add command to apply optional chaining only to selection
 fix(test): resolve TypeError on activeTextEditor getter

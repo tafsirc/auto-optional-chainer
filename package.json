@@ -52,6 +52,14 @@
           "type": "boolean",
           "default": false,
           "description": "Enable keyboard shortcut for applying optional chaining"
+        },
+        "autoOptionalChainer.ignoredIdentifiers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Custom identifiers or global singletons to ignore during optional chaining"
         }
       }
     },

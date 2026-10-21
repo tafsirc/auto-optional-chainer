@@ -86,7 +86,8 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       const selectedText = document.getText(selection);
-      const processed = transformSourceCode(selectedText);
+      const customIgnored = getCustomIgnoredIdentifiers();
+      const processed = transformSourceCode(selectedText, customIgnored);
       if (processed !== selectedText) {
         await editor.edit((editBuilder) => {
           editBuilder.replace(selection, processed);
@@ -132,6 +133,12 @@ export function isSupportedDocument(document: vscode.TextDocument): boolean {
   return supportedLanguageIds.includes(document.languageId);
 }
 
+function getCustomIgnoredIdentifiers(): Set<string> {
+  const config = vscode.workspace.getConfiguration("autoOptionalChainer");
+  const list = config.get<string[]>("ignoredIdentifiers", []);
+  return new Set(list);
+}
+
 export function deactivate(): void {}
 
 /**
@@ -144,7 +151,8 @@ export async function applyOptionalChaining(
   document: vscode.TextDocument
 ): Promise<void> {
   const originalText = document.getText();
-  const processed = transformSourceCode(originalText);
+  const customIgnored = getCustomIgnoredIdentifiers();
+  const processed = transformSourceCode(originalText, customIgnored);
 
   // Skip if no changes were made to avoid unnecessary file updates
   if (processed === originalText) {
