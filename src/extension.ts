@@ -114,7 +114,7 @@ const ignoredIdentifiers: string[] = [
  * Input:  user.profile.name
  * Output: user?.profile?.name
  */
-function processCodeSegment(segment: string): string {
+export function processCodeSegment(segment: string): string {
   // First step: Identify all property assignments in the code
   // This prevents adding optional chaining to the left side of assignments
   const assignmentPositions = new Set<number>();
@@ -179,13 +179,13 @@ function processCodeSegment(segment: string): string {
  * Input:  const msg = `Hello ${user.profile.name}!`
  * Output: const msg = `Hello ${user?.profile?.name}!`
  */
-type Segment = {
+export type Segment = {
   text: string;
   isCode: boolean;
   type?: "single" | "double" | "backtick";
 };
 
-function splitByStringLiterals(text: string): Segment[] {
+export function splitByStringLiterals(text: string): Segment[] {
   const segments: Segment[] = [];
   let current = "";
   let state: "normal" | "single" | "double" | "backtick" = "normal";
