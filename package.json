@@ -25,7 +25,10 @@
     "vscode",
     "optional-chaining",
     "typescript",
-    "javascript"
+    "javascript",
+    "vue",
+    "svelte",
+    "astro"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
