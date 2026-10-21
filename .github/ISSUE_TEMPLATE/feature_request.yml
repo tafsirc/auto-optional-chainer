@@ -1,0 +1,49 @@
+name: "💡 Feature Request"
+description: "Suggest an idea or enhancement for Auto Optional Chainer"
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to improve Auto Optional Chainer? Tell us about it!
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: "I am always frustrated when..."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution or new behavior you'd like.
+      placeholder: "It would be great if..."
+    validations:
+      required: true
+  - type: textarea
+    id: code_example
+    attributes:
+      label: Code Example (Before & After)
+      description: Provide an example illustrating the desired transformation.
+      value: |
+        // Before
+        const value = obj.nested.property;
+
+        // Expected After
+        const value = obj?.nested?.property;
+      render: typescript
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions or workarounds you've considered.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to ensure this is not already requested.
+          required: true
