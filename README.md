@@ -4,6 +4,10 @@
   <img src="assets/logo.png" alt="Auto Optional Chainer" width="128" />
 </p>
 
+<p align="center">
+  <a href="https://github.com/tafsirc/auto-optional-chainer/actions/workflows/ci.yml"><img src="https://github.com/tafsirc/auto-optional-chainer/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+</p>
+
 ## Introduction
 
 **Auto Optional Chainer** is a Visual Studio Code extension that automatically adds optional chaining (`?.`) in JavaScript and TypeScript code where needed. This helps prevent runtime errors caused by accessing properties on `undefined` or `null` values.
