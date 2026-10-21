@@ -95,6 +95,10 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for set
 
 If you discover a security vulnerability, please review our [Security Policy](SECURITY.md) to report it responsibly.
 
+## Sponsor
+
+If you find this extension helpful, consider supporting its development on [Polar](https://polar.sh/tafsirc).
+
 ## Developer
 
 Feel free to visit the [GitHub](https://github.com/tafsirc) profile.
