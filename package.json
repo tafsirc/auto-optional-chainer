@@ -21,6 +21,12 @@
   "categories": [
     "Formatters"
   ],
+  "keywords": [
+    "vscode",
+    "optional-chaining",
+    "typescript",
+    "javascript"
+  ],
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
