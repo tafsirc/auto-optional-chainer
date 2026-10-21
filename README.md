@@ -91,6 +91,10 @@ To modify these settings:
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines, and read our [Code of Conduct](CODE_OF_CONDUCT.md).
 
+## Security
+
+If you discover a security vulnerability, please review our [Security Policy](SECURITY.md) to report it responsibly.
+
 ## Developer
 
 Feel free to visit the [GitHub](https://github.com/tafsirc) profile.
