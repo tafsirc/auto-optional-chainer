@@ -101,7 +101,7 @@ If you find this extension helpful, consider supporting its development on [Pola
 
 ## Developer
 
-Feel free to visit the [GitHub](https://github.com/tafsirc) profile.
+Developed by **Tafsir Chowdhury**. Feel free to visit the [GitHub](https://github.com/tafsirc) profile.
 
 ## License
 
