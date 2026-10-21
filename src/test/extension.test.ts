@@ -53,13 +53,27 @@ suite("AutoOptionalChainer Extension Test Suite", () => {
       selection: new vscode.Selection(0, 0, 0, 0),
     } as any;
 
-    // Mock the activeTextEditor
-    (vscode.window as any).activeTextEditor = mockEditor;
+    // Mock the activeTextEditor safely
+    try {
+      Object.defineProperty(vscode.window, "activeTextEditor", {
+        get: () => mockEditor,
+        configurable: true,
+      });
+    } catch {
+      // vscode.window.activeTextEditor may be read-only in some host environments
+    }
   });
 
   // Teardown after tests
   teardown(() => {
-    (vscode.window as any).activeTextEditor = undefined;
+    try {
+      Object.defineProperty(vscode.window, "activeTextEditor", {
+        get: () => undefined,
+        configurable: true,
+      });
+    } catch {
+      // Ignore cleanup error if not configurable
+    }
   });
 
   // Test suite for supported document types
