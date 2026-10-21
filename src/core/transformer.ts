@@ -23,6 +23,7 @@ export const ignoredIdentifiers = new Set<string>([
 /**
  * Processes a code segment to add optional chaining operators
  * Handles complex cases like:
+ * - Nested property access (e.g., user.address.street -> user?.address?.street)
  * - Skipping property assignments (e.g., obj.prop = value)
  * - Preserving comparisons (e.g., obj.prop === value)
  * - Ignoring built-in objects (e.g., console.log)
@@ -39,53 +40,60 @@ export function processCodeSegment(
     ? new Set([...ignoredIdentifiers, ...customIgnored])
     : ignoredIdentifiers;
 
-  // First step: Identify all property assignments in the code
-  const assignmentPositions = new Set<number>();
-  const assignmentRegex = /\b\w+\.\w+\s*=(?!=)/g;
-  let match: RegExpExecArray | null;
+  let current = segment;
+  let previous = "";
 
-  while ((match = assignmentRegex.exec(segment)) !== null) {
-    assignmentPositions.add(match.index);
-  }
+  // Iteratively process chained properties (e.g., a.b.c -> a?.b?.c)
+  while (current !== previous) {
+    previous = current;
 
-  // Second step: Process each property access chain
-  const dotAccessRegex = /(\b\w+)\.(\w+)/g;
-  let result = segment;
-  type PropertyMatch = {
-    fullMatch: string;
-    identifier: string;
-    property: string;
-    index: number;
-    length: number;
-  };
-  const allMatches: PropertyMatch[] = [];
+    // Identify all property assignments in the code
+    const assignmentPositions = new Set<number>();
+    const assignmentRegex = /\b\w+\.\w+\s*=(?!=)/g;
+    let match: RegExpExecArray | null;
 
-  while ((match = dotAccessRegex.exec(segment)) !== null) {
-    allMatches.push({
-      fullMatch: match[0],
-      identifier: match[1],
-      property: match[2],
-      index: match.index,
-      length: match[0].length,
-    });
-  }
+    while ((match = assignmentRegex.exec(current)) !== null) {
+      assignmentPositions.add(match.index);
+    }
 
-  allMatches.reverse().forEach(({ fullMatch, identifier, property, index }) => {
-    let isAssignment = false;
-    assignmentPositions.forEach((pos) => {
-      if (index >= pos && index <= pos + fullMatch.length) {
-        isAssignment = true;
+    // Process property access
+    const dotAccessRegex = /(\b\w+)\.(\w+)/g;
+    type PropertyMatch = {
+      fullMatch: string;
+      identifier: string;
+      property: string;
+      index: number;
+      length: number;
+    };
+    const allMatches: PropertyMatch[] = [];
+
+    while ((match = dotAccessRegex.exec(current)) !== null) {
+      allMatches.push({
+        fullMatch: match[0],
+        identifier: match[1],
+        property: match[2],
+        index: match.index,
+        length: match[0].length,
+      });
+    }
+
+    allMatches.reverse().forEach(({ fullMatch, identifier, property, index }) => {
+      let isAssignment = false;
+      assignmentPositions.forEach((pos) => {
+        if (index >= pos && index <= pos + fullMatch.length) {
+          isAssignment = true;
+        }
+      });
+
+      if (!isAssignment && !activeIgnored.has(identifier)) {
+        const before = current.slice(0, index);
+        const after = current.slice(index + fullMatch.length);
+        current = before + `${identifier}?.${property}` + after;
       }
     });
+  }
 
-    if (!isAssignment && !activeIgnored.has(identifier)) {
-      const before = result.slice(0, index);
-      const after = result.slice(index + fullMatch.length);
-      result = before + `${identifier}?.${property}` + after;
-    }
-  });
-
-  return result;
+  return current;
 }
 
 export type Segment = {

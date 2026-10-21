@@ -3,5 +3,6 @@ out
 dist
 *.vsix
 .vscode-test
+coverage
 .DS_Store
 *.log

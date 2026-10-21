@@ -66,6 +66,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
+    "test:unit": "mocha --ui tdd out/test/transformer.test.js",
+    "coverage": "c8 --reporter=text --reporter=lcov mocha --ui tdd out/test/transformer.test.js",
     "test": "vscode-test",
     "package": "vsce package"
   },
@@ -73,6 +75,8 @@
     "@types/vscode": "^1.96.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "c8": "^9.1.0",
+    "mocha": "^10.8.2",
     "@typescript-eslint/eslint-plugin": "^8.22.0",
     "@typescript-eslint/parser": "^8.22.0",
     "eslint": "^9.19.0",
