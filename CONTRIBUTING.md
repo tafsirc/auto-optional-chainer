@@ -56,6 +56,30 @@ Please note that this project is released with a [Code of Conduct](CODE_OF_CONDU
    ```
 4. Commit your changes with clear, descriptive commit messages.
 
+## Commit Message Guidelines
+
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (`<type>(<scope>): <description>`).
+
+### Allowed Types:
+- `feat`: A new feature or capability
+- `fix`: A bug fix
+- `docs`: Documentation changes only
+- `style`: Changes that do not affect code meaning (formatting via Prettier)
+- `refactor`: A code change that neither fixes a bug nor adds a feature
+- `perf`: A code change that improves performance
+- `test`: Adding missing tests or correcting existing tests
+- `build`: Changes that affect the build system or external dependencies
+- `ci`: Changes to CI configuration files and scripts
+- `chore`: Maintenance tasks and config updates
+
+### Example Commit Messages:
+```bash
+feat: add command to apply optional chaining only to selection
+fix(test): resolve TypeError on activeTextEditor getter
+docs(readme): add comparison matrix
+chore(deps): update dependency prettier to v3
+```
+
 ## Submitting a Pull Request
 
 1. Push your branch to your forked repository:
