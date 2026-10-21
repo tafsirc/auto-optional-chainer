@@ -57,7 +57,7 @@ To modify these settings:
 
 ## Developer
 
-Feel free to visit the [GitHub](https://github.com/ctafsiras) profile.
+Feel free to visit the [GitHub](https://github.com/tafsirc) profile.
 
 ## License
 
