@@ -1,0 +1,63 @@
+name: "🐛 Bug Report"
+description: "File a bug report to help improve Auto Optional Chainer"
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue! Please check existing issues first before submitting.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe what happened...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      value: |
+        1. Open a file with the code snippet below
+        2. Run command 'Apply Optional Chaining'
+        3. See error or unexpected output
+    validations:
+      required: true
+  - type: textarea
+    id: code_sample
+    attributes:
+      label: Code Snippet
+      description: Provide the input code that reproduces the issue
+      render: typescript
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: vscode_version
+    attributes:
+      label: VS Code Version
+      placeholder: "e.g. 1.96.0"
+  - type: input
+    id: extension_version
+    attributes:
+      label: Extension Version
+      placeholder: "e.g. 0.0.7"
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate.
+          required: true
