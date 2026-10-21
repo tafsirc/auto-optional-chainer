@@ -49,7 +49,8 @@ Alternatively, search for **Auto Optional Chainer** in the Extensions view (`Ctr
 ## Usage
 
 1. Open a JavaScript or TypeScript file in VS Code.
-2. Run the command **"Apply Optional Chaining"** from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
+2. Run the command **"Apply Optional Chaining"** from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`), or press `Ctrl+Shift+O` (`Cmd+Shift+O` on macOS).
+   > **Note:** The keyboard shortcut requires enabling `autoOptionalChainer.enableShortcut` in settings first.
 3. The extension will update your code with optional chaining where applicable.
 
 ## Requirements
