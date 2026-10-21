@@ -12,10 +12,7 @@ suite("Core Transformer Test Suite", () => {
   });
 
   test("Should transform deep nested access", () => {
-    assert.strictEqual(
-      processCodeSegment("a.b.c.d"),
-      "a?.b?.c?.d"
-    );
+    assert.strictEqual(processCodeSegment("a.b.c.d"), "a?.b?.c?.d");
   });
 
   test("Should not transform ignored identifiers", () => {
@@ -25,8 +22,10 @@ suite("Core Transformer Test Suite", () => {
   });
 
   test("Should transform source code with string literal preservation", () => {
-    const input = 'const x = user.profile.name; const label = "user.profile.name";';
-    const expected = 'const x = user?.profile?.name; const label = "user.profile.name";';
+    const input =
+      'const x = user.profile.name; const label = "user.profile.name";';
+    const expected =
+      'const x = user?.profile?.name; const label = "user.profile.name";';
     assert.strictEqual(transformSourceCode(input), expected);
   });
 
