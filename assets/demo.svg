@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 360" width="100%" height="360" style="background:#1e1e1e;border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,0.5);font-family:'Fira Code', Menlo, Monaco, Consolas, 'Courier New', monospace;">
+  <defs>
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2d2d2d"/>
+      <stop offset="100%" stop-color="#252526"/>
+    </linearGradient>
+    <style>
+      .window-btn { width: 12px; height: 12px; rx: 6px; }
+      .tab-text { fill: #cccccc; font-size: 13px; font-family: sans-serif; }
+      .keyword { fill: #c586c0; font-size: 15px; }
+      .variable { fill: #9cdcfe; font-size: 15px; }
+      .property { fill: #4ec9b0; font-size: 15px; }
+      .string { fill: #ce9178; font-size: 15px; }
+      .comment { fill: #6a9955; font-size: 13px; font-style: italic; }
+      .operator { fill: #d4d4d4; font-size: 15px; }
+      .badge-text { fill: #ffffff; font-size: 12px; font-weight: bold; }
+
+      @keyframes fadeTransform {
+        0%, 35% { opacity: 1; }
+        45%, 90% { opacity: 0; }
+        100% { opacity: 1; }
+      }
+      @keyframes showChained {
+        0%, 35% { opacity: 0; }
+        45%, 90% { opacity: 1; }
+        100% { opacity: 0; }
+      }
+      @keyframes pulseShortcut {
+        0%, 25% { opacity: 0; transform: translateY(-5px); }
+        35%, 55% { opacity: 1; transform: translateY(0); }
+        65%, 100% { opacity: 0; transform: translateY(-5px); }
+      }
+
+      .before-code { animation: fadeTransform 7s infinite ease-in-out; }
+      .after-code { animation: showChained 7s infinite ease-in-out; }
+      .shortcut-pill { animation: pulseShortcut 7s infinite ease-in-out; }
+    </style>
+  </defs>
+
+  <!-- Titlebar -->
+  <rect x="0" y="0" width="800" height="40" fill="url(#headerGrad)" rx="10 10 0 0" />
+  <circle cx="20" cy="20" r="6" fill="#ff5f56" />
+  <circle cx="40" cy="20" r="6" fill="#ffbd2e" />
+  <circle cx="60" cy="20" r="6" fill="#27c93f" />
+
+  <!-- Tab -->
+  <path d="M 90 40 L 105 10 L 250 10 L 265 40 Z" fill="#1e1e1e" />
+  <text x="130" y="27" class="tab-text">app.ts — Auto Optional Chainer</text>
+
+  <!-- Editor Gutter / Line Numbers -->
+  <rect x="0" y="40" width="55" height="320" fill="#1e1e1e" />
+  <text x="25" y="80" fill="#858585" font-size="14">1</text>
+  <text x="25" y="120" fill="#858585" font-size="14">2</text>
+  <text x="25" y="160" fill="#858585" font-size="14">3</text>
+  <text x="25" y="200" fill="#858585" font-size="14">4</text>
+  <text x="25" y="240" fill="#858585" font-size="14">5</text>
+  <text x="25" y="280" fill="#858585" font-size="14">6</text>
+
+  <!-- Code Line 1: Comment -->
+  <text x="75" y="80" class="comment">// Press Cmd+Shift+O (or save) to safely chain property access</text>
+
+  <!-- Code Line 2: Declaration -->
+  <text x="75" y="120">
+    <tspan class="keyword">interface </tspan>
+    <tspan class="property">User </tspan>
+    <tspan class="operator">{ </tspan>
+    <tspan class="variable">profile</tspan><tspan class="operator">?: { </tspan>
+    <tspan class="variable">address</tspan><tspan class="operator">?: { </tspan>
+    <tspan class="variable">street</tspan><tspan class="operator">?: </tspan>
+    <tspan class="property">string </tspan>
+    <tspan class="operator">} } }</tspan>
+  </text>
+
+  <!-- Code Line 4: Before Code -->
+  <g class="before-code">
+    <text x="75" y="200">
+      <tspan class="keyword">const </tspan>
+      <tspan class="variable">street </tspan>
+      <tspan class="operator">= </tspan>
+      <tspan class="variable">user</tspan><tspan class="operator">.</tspan><tspan class="variable">profile</tspan><tspan class="operator">.</tspan><tspan class="variable">address</tspan><tspan class="operator">.</tspan><tspan class="variable">street</tspan><tspan class="operator">;</tspan>
+    </text>
+    <text x="75" y="240">
+      <tspan class="variable">console</tspan><tspan class="operator">.</tspan><tspan class="variable">log</tspan><tspan class="operator">(</tspan><tspan class="string">`Location: ${</tspan><tspan class="variable">user</tspan><tspan class="operator">.</tspan><tspan class="variable">profile</tspan><tspan class="operator">.</tspan><tspan class="variable">city</tspan><tspan class="string">}`</tspan><tspan class="operator">);</tspan>
+    </text>
+  </g>
+
+  <!-- Code Line 4 & 5: After Code (Optional Chained) -->
+  <g class="after-code">
+    <text x="75" y="200">
+      <tspan class="keyword">const </tspan>
+      <tspan class="variable">street </tspan>
+      <tspan class="operator">= </tspan>
+      <tspan class="variable">user</tspan><tspan fill="#f1fa8c" font-weight="bold">?.</tspan><tspan class="variable">profile</tspan><tspan fill="#f1fa8c" font-weight="bold">?.</tspan><tspan class="variable">address</tspan><tspan fill="#f1fa8c" font-weight="bold">?.</tspan><tspan class="variable">street</tspan><tspan class="operator">;</tspan>
+    </text>
+    <text x="75" y="240">
+      <tspan class="variable">console</tspan><tspan class="operator">.</tspan><tspan class="variable">log</tspan><tspan class="operator">(</tspan><tspan class="string">`Location: ${</tspan><tspan class="variable">user</tspan><tspan fill="#f1fa8c" font-weight="bold">?.</tspan><tspan class="variable">profile</tspan><tspan fill="#f1fa8c" font-weight="bold">?.</tspan><tspan class="variable">city</tspan><tspan class="string">}`</tspan><tspan class="operator">);</tspan>
+    </text>
+  </g>
+
+  <!-- Interactive Action Pill Notification -->
+  <g class="shortcut-pill" transform="translate(480, 290)">
+    <rect width="280" height="42" rx="8" fill="#007acc" opacity="0.95" />
+    <text x="14" y="26" class="badge-text">⚡ Shortcut: Cmd+Shift+O Applied</text>
+  </g>
+</svg>
