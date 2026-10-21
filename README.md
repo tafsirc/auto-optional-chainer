@@ -1,4 +1,8 @@
-# Auto Optional Chainer README
+# Auto Optional Chainer
+
+<p align="center">
+  <img src="assets/logo.png" alt="Auto Optional Chainer" width="128" />
+</p>
 
 ## Introduction
 
