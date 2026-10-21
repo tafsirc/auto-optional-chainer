@@ -1,6 +1,7 @@
 .vscode/**
 .github/**
 .vscode-test/**
+coverage/**
 src/**
 .gitignore
 .yarnrc
