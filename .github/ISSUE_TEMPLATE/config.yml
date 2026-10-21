@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "💬 GitHub Discussions & Questions"
+    url: https://github.com/tafsirc/auto-optional-chainer/discussions
+    about: Ask usage questions, discuss ideas, and share feedback with the community.
+  - name: "🔒 Security Advisory"
+    url: https://github.com/tafsirc/auto-optional-chainer/security/advisories/new
+    about: Report a sensitive security vulnerability privately.
+  - name: "📖 Documentation & Setup"
+    url: https://github.com/tafsirc/auto-optional-chainer#readme
+    about: Read installation guide and configuration docs.
