@@ -129,7 +129,14 @@ export function processCodeSegment(segment: string): string {
   // Adds optional chaining while respecting assignments and ignored identifiers
   const dotAccessRegex = /(\b\w+)\.(\w+)/g;
   let result = segment;
-  let allMatches = [];
+  type PropertyMatch = {
+    fullMatch: string;
+    identifier: string;
+    property: string;
+    index: number;
+    length: number;
+  };
+  const allMatches: PropertyMatch[] = [];
 
   // Collect all property access matches before processing
   // This allows us to handle nested property chains correctly
