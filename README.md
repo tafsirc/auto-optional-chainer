@@ -35,6 +35,23 @@ const street = user.address.street;
 const street = user?.address?.street;
 ```
 
+## Why Auto Optional Chainer?
+
+Accessing deeply nested properties without checks often leads to crashes like `Cannot read properties of undefined (reading 'x')`. Writing `?.` manually across hundreds of lines is tedious, repetitive, and error-prone. 
+
+**Auto Optional Chainer** eliminates this friction with a single shortcut (`Cmd+Shift+O` / `Ctrl+Shift+O`) or automatically on save.
+
+### Feature Comparison Matrix
+
+| Scenario / Feature | Manual Typing | ESLint / Prettier | Auto Optional Chainer |
+| :--- | :---: | :---: | :---: |
+| Deep Property Chaining (`a.b.c -> a?.b?.c`) | ⚠️ Tedious | ❌ No auto-chain | ✅ Instant |
+| Assignment Guard (`user.id = 5` preserved) | ⚠️ Error-prone | ❌ N/A | ✅ Smart protection |
+| String Literal Protection (`"a.b.c"` untouched) | ⚠️ Manual | ❌ N/A | ✅ Tokenizer preserved |
+| Template Literal Interpolation (`${a.b}`) | ⚠️ Manual | ❌ N/A | ✅ Processes expressions |
+| Standard Library Protection (`Math.max`, `console.log`) | ⚠️ Manual | ❌ N/A | ✅ Auto-ignored |
+| Auto-apply on File Save | ❌ Manual | ⚠️ Formatting only | ✅ Configurable |
+
 ## Features
 
 - Automatically inserts optional chaining in JavaScript and TypeScript files.
