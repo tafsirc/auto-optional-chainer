@@ -87,6 +87,10 @@ To modify these settings:
 - Added configuration options for auto-apply on save and keyboard shortcuts.
 - Implemented keyboard shortcut support (Ctrl+Shift+O / Cmd+Shift+O).
 
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions and guidelines, and read our [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Developer
 
 Feel free to visit the [GitHub](https://github.com/tafsirc) profile.
