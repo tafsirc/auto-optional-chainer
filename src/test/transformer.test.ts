@@ -70,4 +70,44 @@ const name = user?.profile?.name;
 
     assert.strictEqual(transformComponentDocument(component), expected);
   });
+
+  test("Should not transform floating point number literals", () => {
+    assert.strictEqual(
+      processCodeSegment("const pi = 3.14;"),
+      "const pi = 3.14;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const price = 99.95;"),
+      "const price = 99.95;"
+    );
+  });
+
+  test("Should preserve comments untouched", () => {
+    const input =
+      "// user.name\n/* data.value */\nconst x = user.profile.name;";
+    const expected =
+      "// user.name\n/* data.value */\nconst x = user?.profile?.name;";
+    assert.strictEqual(transformSourceCode(input), expected);
+  });
+
+  test("Should preserve regex literals", () => {
+    const input = "const regex = /user.name/g; const valid = user.name;";
+    const expected = "const regex = /user.name/g; const valid = user?.name;";
+    assert.strictEqual(transformSourceCode(input), expected);
+  });
+
+  test("Should handle array indexing and method chaining", () => {
+    assert.strictEqual(processCodeSegment("users[0].name"), "users[0]?.name");
+    assert.strictEqual(
+      processCodeSegment("user.getProfile().name"),
+      "user?.getProfile()?.name"
+    );
+  });
+
+  test("Should handle assignment with property access on RHS", () => {
+    assert.strictEqual(
+      processCodeSegment("user.name = person.details.age"),
+      "user.name = person?.details?.age"
+    );
+  });
 });

@@ -47,20 +47,23 @@ export function processCodeSegment(
   while (current !== previous) {
     previous = current;
 
-    // Identify all property assignments in the code
-    const assignmentPositions = new Set<number>();
+    // Identify all property assignments in the code as ranges
+    const assignmentRanges: Array<{ start: number; end: number }> = [];
     const assignmentRegex = /\b\w+\.\w+\s*=(?!=)/g;
     let match: RegExpExecArray | null;
 
     while ((match = assignmentRegex.exec(current)) !== null) {
-      assignmentPositions.add(match.index);
+      assignmentRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+      });
     }
 
-    // Process property access
-    const dotAccessRegex = /(\b\w+)\.(\w+)/g;
+    // Process property access (supporting word characters, brackets, and parentheses before the dot)
+    const dotAccessRegex = /((\b\w+|\)|\]))\s*\.\s*(\w+)/g;
     type PropertyMatch = {
       fullMatch: string;
-      identifier: string;
+      prefix: string;
       property: string;
       index: number;
       length: number;
@@ -70,29 +73,26 @@ export function processCodeSegment(
     while ((match = dotAccessRegex.exec(current)) !== null) {
       allMatches.push({
         fullMatch: match[0],
-        identifier: match[1],
-        property: match[2],
+        prefix: match[1],
+        property: match[3],
         index: match.index,
         length: match[0].length,
       });
     }
 
-    allMatches
-      .reverse()
-      .forEach(({ fullMatch, identifier, property, index }) => {
-        let isAssignment = false;
-        assignmentPositions.forEach((pos) => {
-          if (index >= pos && index <= pos + fullMatch.length) {
-            isAssignment = true;
-          }
-        });
+    allMatches.reverse().forEach(({ fullMatch, prefix, property, index }) => {
+      const isAssignment = assignmentRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
+      // Exclude floating-point number literals like 3.14
+      const isNumber = /^\d+$/.test(prefix);
 
-        if (!isAssignment && !activeIgnored.has(identifier)) {
-          const before = current.slice(0, index);
-          const after = current.slice(index + fullMatch.length);
-          current = before + `${identifier}?.${property}` + after;
-        }
-      });
+      if (!isAssignment && !isNumber && !activeIgnored.has(prefix)) {
+        const before = current.slice(0, index);
+        const after = current.slice(index + fullMatch.length);
+        current = before + `${prefix}?.${property}` + after;
+      }
+    });
   }
 
   return current;
@@ -101,7 +101,7 @@ export function processCodeSegment(
 export type Segment = {
   text: string;
   isCode: boolean;
-  type?: "single" | "double" | "backtick";
+  type?: "single" | "double" | "backtick" | "comment" | "regex";
 };
 
 /**
@@ -110,14 +110,37 @@ export type Segment = {
 export function splitByStringLiterals(text: string): Segment[] {
   const segments: Segment[] = [];
   let current = "";
-  let state: "normal" | "single" | "double" | "backtick" = "normal";
+  let state:
+    | "normal"
+    | "single"
+    | "double"
+    | "backtick"
+    | "lineComment"
+    | "blockComment"
+    | "regex" = "normal";
   let i = 0;
 
   while (i < text.length) {
     const char = text[i];
 
     if (state === "normal") {
-      if (char === '"' || char === "'" || char === "`") {
+      if (char === "/" && text[i + 1] === "/") {
+        if (current) {
+          segments.push({ text: current, isCode: true });
+          current = "";
+        }
+        state = "lineComment";
+        current += "//";
+        i += 2;
+      } else if (char === "/" && text[i + 1] === "*") {
+        if (current) {
+          segments.push({ text: current, isCode: true });
+          current = "";
+        }
+        state = "blockComment";
+        current += "/*";
+        i += 2;
+      } else if (char === '"' || char === "'" || char === "`") {
         if (current) {
           segments.push({ text: current, isCode: true });
           current = "";
@@ -125,10 +148,59 @@ export function splitByStringLiterals(text: string): Segment[] {
         state = char === '"' ? "double" : char === "'" ? "single" : "backtick";
         current += char;
         i++;
+      } else if (
+        char === "/" &&
+        (i === 0 || /[=(:,;!&|?+\-*~^%]\s*$/.test(current))
+      ) {
+        if (current) {
+          segments.push({ text: current, isCode: true });
+          current = "";
+        }
+        state = "regex";
+        current += char;
+        i++;
       } else {
         current += char;
         i++;
       }
+    } else if (state === "lineComment") {
+      current += char;
+      if (char === "\n") {
+        segments.push({ text: current, isCode: false, type: "comment" });
+        current = "";
+        state = "normal";
+      }
+      i++;
+    } else if (state === "blockComment") {
+      current += char;
+      if (char === "*" && text[i + 1] === "/") {
+        current += "/";
+        segments.push({ text: current, isCode: false, type: "comment" });
+        current = "";
+        state = "normal";
+        i += 2;
+      } else {
+        i++;
+      }
+    } else if (state === "regex") {
+      current += char;
+      if (char === "\\") {
+        i++;
+        if (i < text.length) {
+          current += text[i];
+        }
+      } else if (char === "/") {
+        i++;
+        while (i < text.length && /[a-z]/i.test(text[i])) {
+          current += text[i];
+          i++;
+        }
+        segments.push({ text: current, isCode: false, type: "regex" });
+        current = "";
+        state = "normal";
+        continue;
+      }
+      i++;
     } else if (state === "single") {
       current += char;
       if (char === "\\") {
@@ -202,10 +274,16 @@ export function splitByStringLiterals(text: string): Segment[] {
   }
 
   if (current) {
+    let finalType: Segment["type"] = undefined;
+    if (state === "lineComment" || state === "blockComment") {
+      finalType = "comment";
+    } else if (state !== "normal") {
+      finalType = state;
+    }
     segments.push({
       text: current,
       isCode: state === "normal",
-      type: state === "normal" ? undefined : state,
+      type: finalType,
     });
   }
   return segments;
