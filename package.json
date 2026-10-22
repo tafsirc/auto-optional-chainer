@@ -28,10 +28,12 @@
     "javascript",
     "vue",
     "svelte",
-    "astro"
+    "astro",
+    "web"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
+  "browser": "./out/extension.js",
   "contributes": {
     "commands": [
       {
