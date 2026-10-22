@@ -79,6 +79,7 @@ export function processCodeSegment(
         index: match.index,
         length: match[0].length,
       });
+      dotAccessRegex.lastIndex = match.index + match[1].length;
     }
 
     allMatches.reverse().forEach(({ fullMatch, prefix, property, index }) => {

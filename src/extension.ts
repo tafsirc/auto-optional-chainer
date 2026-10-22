@@ -195,7 +195,12 @@ export function isSupportedDocument(document: vscode.TextDocument): boolean {
 function getCustomIgnoredIdentifiers(): Set<string> {
   const config = vscode.workspace.getConfiguration("autoOptionalChainer");
   const list = config.get<string[]>("ignoredIdentifiers", []);
-  return new Set(list);
+  const ignoreThis = config.get<boolean>("ignoreThis", true);
+  const set = new Set(list);
+  if (ignoreThis) {
+    set.add("this");
+  }
+  return set;
 }
 
 export function deactivate(): void {}

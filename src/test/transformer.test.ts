@@ -43,6 +43,13 @@ suite("Core Transformer Test Suite", () => {
     assert.strictEqual(transformSourceCode(input, custom), expected);
   });
 
+  test("Should support ignoring 'this' reference via custom ignored set", () => {
+    const custom = new Set(["this"]);
+    const input = "this.user.profile.name";
+    const expected = "this.user?.profile?.name";
+    assert.strictEqual(transformSourceCode(input, custom), expected);
+  });
+
   test("Should transform script blocks in Vue/Svelte/Astro components", () => {
     const component = `<template>
   <div class="user-card">{{ user.name }}</div>
