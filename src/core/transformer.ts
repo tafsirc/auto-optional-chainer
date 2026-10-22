@@ -37,6 +37,7 @@ export const ignoredIdentifiers = new Set<string>([
   "Reflect",
   "Proxy",
   "crypto",
+  "super",
 ]);
 
 /**
@@ -85,6 +86,9 @@ export function processCodeSegment(
     const newRegex = /\bnew\s+([\w$]+(?:\s*\[[^\]]*\]|\s*\.\s*[\w$]+)*)/g;
 
     while ((match = newRegex.exec(current)) !== null) {
+      if (match[1] === "target") {
+        continue;
+      }
       const constructorOffset = match[0].indexOf(match[1]);
       const start = match.index + constructorOffset;
       newExpressionRanges.push({
@@ -93,8 +97,9 @@ export function processCodeSegment(
       });
     }
 
-    // Process property access (supporting word characters, brackets, and parentheses before the dot)
-    const dotAccessRegex = /((\b\w+|\)|\]))\s*\.\s*(\w+)/g;
+    // Process property access (supporting word characters, brackets, parentheses, and meta-properties before the dot)
+    const dotAccessRegex =
+      /((\bimport\s*\.\s*meta|\bnew\s*\.\s*target|\b\w+|\)|\]))\s*\.\s*(\w+)/g;
     type PropertyMatch = {
       fullMatch: string;
       prefix: string;
@@ -121,12 +126,17 @@ export function processCodeSegment(
       const isNewConstructor = newExpressionRanges.some(
         (range) => index >= range.start && index < range.end
       );
+      // Meta-properties (import.meta, new.target) cannot have optional chaining inserted
+      const isMetaProperty =
+        (prefix === "import" && property === "meta") ||
+        (prefix === "new" && property === "target");
       // Exclude floating-point number literals like 3.14
       const isNumber = /^\d+$/.test(prefix);
 
       if (
         !isAssignment &&
         !isNewConstructor &&
+        !isMetaProperty &&
         !isNumber &&
         !activeIgnored.has(prefix)
       ) {
