@@ -60,6 +60,20 @@ export function processCodeSegment(
       });
     }
 
+    // Identify target constructor expressions in 'new' invocations
+    // Optional chaining is invalid in the callee of a new expression (ECMA-262)
+    const newExpressionRanges: Array<{ start: number; end: number }> = [];
+    const newRegex = /\bnew\s+([\w$]+(?:\s*\[[^\]]*\]|\s*\.\s*[\w$]+)*)/g;
+
+    while ((match = newRegex.exec(current)) !== null) {
+      const constructorOffset = match[0].indexOf(match[1]);
+      const start = match.index + constructorOffset;
+      newExpressionRanges.push({
+        start,
+        end: start + match[1].length,
+      });
+    }
+
     // Process property access (supporting word characters, brackets, and parentheses before the dot)
     const dotAccessRegex = /((\b\w+|\)|\]))\s*\.\s*(\w+)/g;
     type PropertyMatch = {
@@ -85,10 +99,18 @@ export function processCodeSegment(
       const isAssignment = assignmentRanges.some(
         (range) => index >= range.start && index < range.end
       );
+      const isNewConstructor = newExpressionRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
       // Exclude floating-point number literals like 3.14
       const isNumber = /^\d+$/.test(prefix);
 
-      if (!isAssignment && !isNumber && !activeIgnored.has(prefix)) {
+      if (
+        !isAssignment &&
+        !isNewConstructor &&
+        !isNumber &&
+        !activeIgnored.has(prefix)
+      ) {
         const before = current.slice(0, index);
         const after = current.slice(index + fullMatch.length);
         current = before + `${prefix}?.${property}` + after;

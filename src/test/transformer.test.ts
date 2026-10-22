@@ -110,4 +110,21 @@ const name = user?.profile?.name;
       "user.name = person?.details?.age"
     );
   });
+
+  test("Should not transform new constructor expressions", () => {
+    assert.strictEqual(processCodeSegment("new a.b()"), "new a.b()");
+    assert.strictEqual(processCodeSegment("new a.b.c()"), "new a.b.c()");
+    assert.strictEqual(
+      processCodeSegment("const s = new service.Client(user.name);"),
+      "const s = new service.Client(user?.name);"
+    );
+    assert.strictEqual(
+      processCodeSegment("const x = new a.b() + new c.d();"),
+      "const x = new a.b() + new c.d();"
+    );
+    assert.strictEqual(
+      processCodeSegment("const item = new a.b().method();"),
+      "const item = new a.b()?.method();"
+    );
+  });
 });
