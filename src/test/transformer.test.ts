@@ -142,4 +142,35 @@ const name = user?.profile?.name;
       "const item = new a.b()?.method();"
     );
   });
+
+  test("Should protect JavaScript meta-properties (import.meta, new.target, super)", () => {
+    assert.strictEqual(
+      processCodeSegment("console.log(import.meta.url);"),
+      "console.log(import.meta?.url);"
+    );
+    assert.strictEqual(
+      processCodeSegment("const meta = import.meta;"),
+      "const meta = import.meta;"
+    );
+    assert.strictEqual(
+      processCodeSegment("console.log(import.meta.env.VITE_API_URL);"),
+      "console.log(import.meta?.env?.VITE_API_URL);"
+    );
+    assert.strictEqual(
+      processCodeSegment("if (!new.target) throw new Error();"),
+      "if (!new.target) throw new Error();"
+    );
+    assert.strictEqual(
+      processCodeSegment("const name = new.target.name;"),
+      "const name = new.target?.name;"
+    );
+    assert.strictEqual(
+      processCodeSegment("super.render();"),
+      "super.render();"
+    );
+    assert.strictEqual(
+      processCodeSegment("super.data.items;"),
+      "super.data.items;"
+    );
+  });
 });
