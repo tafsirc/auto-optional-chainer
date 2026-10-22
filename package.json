@@ -77,7 +77,21 @@
         "mac": "cmd+shift+o",
         "when": "editorTextFocus && config.autoOptionalChainer.enableShortcut"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "AutoOptionalChainer.applyToSelection",
+          "when": "editorHasSelection && editorTextFocus && editorLangId =~ /^(javascript|typescript|javascriptreact|typescriptreact|vue|svelte|astro)$/",
+          "group": "modification@1"
+        },
+        {
+          "command": "AutoOptionalChainer.applyOptionalChaining",
+          "when": "editorTextFocus && editorLangId =~ /^(javascript|typescript|javascriptreact|typescriptreact|vue|svelte|astro)$/",
+          "group": "modification@2"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
