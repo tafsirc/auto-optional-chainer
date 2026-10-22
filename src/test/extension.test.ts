@@ -7,6 +7,7 @@ import {
   splitByStringLiterals,
   transformSourceCode,
   isSupportedDocument,
+  getDocumentTransformEdits,
 } from "../extension";
 
 // Mock the vscode.window.activeTextEditor
@@ -466,6 +467,35 @@ suite("AutoOptionalChainer Extension Test Suite", () => {
       assert.ok(processed.includes("person.address.street =")); // Assignment should not be changed
       assert.ok(processed.includes("user?.settings?.enabled"));
       assert.ok(processed.includes("user?.name"));
+    });
+  });
+
+  // Test suite for Document Transformation Edits (Pre-Save & Formatting)
+  suite("Document Transform Edits", () => {
+    test("Should return replacement TextEdit when changes exist", () => {
+      const doc = createMockDocument("const x = user.profile.name;");
+      const edits = getDocumentTransformEdits(doc);
+      assert.strictEqual(edits.length, 1);
+      assert.strictEqual(edits[0].newText, "const x = user?.profile?.name;");
+    });
+
+    test("Should return empty array when no transformations are required", () => {
+      const doc = createMockDocument("const x = user?.profile?.name;");
+      const edits = getDocumentTransformEdits(doc);
+      assert.strictEqual(edits.length, 0);
+    });
+
+    test("Should handle component document edits", () => {
+      const doc = createMockDocument(
+        "<script>const x = user.name;</script>",
+        "vue"
+      );
+      const edits = getDocumentTransformEdits(doc);
+      assert.strictEqual(edits.length, 1);
+      assert.strictEqual(
+        edits[0].newText,
+        "<script>const x = user?.name;</script>"
+      );
     });
   });
 });

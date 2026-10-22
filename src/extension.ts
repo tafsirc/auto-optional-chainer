@@ -157,21 +157,23 @@ export function activate(context: vscode.ExtensionContext): void {
 
   updateStatusBar(vscode.window.activeTextEditor);
 
-  // Register a listener for document save events
-  // This enables automatic application of optional chaining when files are saved
-  const onSaveDisposable = vscode.workspace.onDidSaveTextDocument(
-    async (document) => {
+  // Register a listener for pre-save document events
+  // This enables automatic application of optional chaining before the file commits to disk
+  const onWillSaveDisposable = vscode.workspace.onWillSaveTextDocument(
+    (event) => {
       const config = vscode.workspace.getConfiguration("autoOptionalChainer");
-      const applyOnSave = config.get<boolean>("applyOnSave");
+      const applyOnSave = config.get<boolean>("applyOnSave", false);
 
-      if (applyOnSave && isSupportedDocument(document)) {
-        await applyOptionalChaining(document);
-        // No need to show message on save to avoid spamming notifications
+      if (applyOnSave && isSupportedDocument(event.document)) {
+        const edits = getDocumentTransformEdits(event.document);
+        if (edits.length > 0) {
+          event.waitUntil(Promise.resolve(edits));
+        }
       }
     }
   );
 
-  context.subscriptions.push(onSaveDisposable);
+  context.subscriptions.push(onWillSaveDisposable);
 }
 
 /**
@@ -201,6 +203,34 @@ function getCustomIgnoredIdentifiers(): Set<string> {
 export function deactivate(): void {}
 
 /**
+ * Computes TextEdit array for transforming a document with optional chaining
+ *
+ * @param document The VS Code text document to transform
+ * @returns Array of TextEdit operations to apply
+ */
+export function getDocumentTransformEdits(
+  document: vscode.TextDocument
+): vscode.TextEdit[] {
+  const originalText = document.getText();
+  const customIgnored = getCustomIgnoredIdentifiers();
+  const isComponent = ["vue", "svelte", "astro"].includes(document.languageId);
+  const processed = isComponent
+    ? transformComponentDocument(originalText, customIgnored)
+    : transformSourceCode(originalText, customIgnored);
+
+  if (processed === originalText) {
+    return [];
+  }
+
+  const fullRange = new vscode.Range(
+    document.positionAt(0),
+    document.positionAt(originalText.length)
+  );
+
+  return [vscode.TextEdit.replace(fullRange, processed)];
+}
+
+/**
  * Main transformation function that applies optional chaining to a document
  *
  * @param document The VS Code text document to transform
@@ -209,38 +239,26 @@ export function deactivate(): void {}
 export async function applyOptionalChaining(
   document: vscode.TextDocument
 ): Promise<void> {
-  const originalText = document.getText();
-  const customIgnored = getCustomIgnoredIdentifiers();
-  const isComponent = ["vue", "svelte", "astro"].includes(document.languageId);
-  const processed = isComponent
-    ? transformComponentDocument(originalText, customIgnored)
-    : transformSourceCode(originalText, customIgnored);
-
-  // Skip if no changes were made to avoid unnecessary file updates
-  if (processed === originalText) {
+  const edits = getDocumentTransformEdits(document);
+  if (edits.length === 0) {
     return;
   }
 
-  // If the document is open in a visible editor, apply via editor.edit with atomic undo stops
+  const edit = edits[0];
   const visibleEditor = vscode.window.visibleTextEditors.find(
     (e) => e.document.uri.toString() === document.uri.toString()
-  );
-
-  const fullRange = new vscode.Range(
-    document.positionAt(0),
-    document.positionAt(originalText.length)
   );
 
   if (visibleEditor) {
     await visibleEditor.edit(
       (editBuilder) => {
-        editBuilder.replace(fullRange, processed);
+        editBuilder.replace(edit.range, edit.newText);
       },
       { undoStopBefore: true, undoStopAfter: true }
     );
   } else {
-    const edit = new vscode.WorkspaceEdit();
-    edit.replace(document.uri, fullRange, processed);
-    await vscode.workspace.applyEdit(edit);
+    const wsEdit = new vscode.WorkspaceEdit();
+    wsEdit.replace(document.uri, edit.range, edit.newText);
+    await vscode.workspace.applyEdit(wsEdit);
   }
 }
