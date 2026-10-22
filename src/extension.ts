@@ -174,12 +174,41 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(onSaveDisposable);
 }
 
+export function isDocumentExcluded(document: vscode.TextDocument): boolean {
+  const config = vscode.workspace.getConfiguration("autoOptionalChainer");
+  const patterns = config.get<string[]>("exclude", [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/out/**",
+    "**/*.d.ts",
+    "**/*.min.js",
+  ]);
+  const filePath = (document.uri?.fsPath || document.fileName || "").replace(
+    /\\/g,
+    "/"
+  );
+  return patterns.some((pattern) => {
+    const escaped = pattern
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*\*/g, ".*")
+      .replace(/(?<!\.)\*/g, "[^/]*");
+    try {
+      return new RegExp(escaped).test(filePath);
+    } catch {
+      return false;
+    }
+  });
+}
+
 /**
  * Checks if the given document type is supported for optional chaining transformation
  * @param document The VS Code text document to check
  * @returns true if the document is a JavaScript or TypeScript file (including React variants)
  */
 export function isSupportedDocument(document: vscode.TextDocument): boolean {
+  if (isDocumentExcluded(document)) {
+    return false;
+  }
   const supportedLanguageIds: string[] = [
     "javascript",
     "typescript",
