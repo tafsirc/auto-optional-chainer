@@ -49,7 +49,8 @@ export function processCodeSegment(
 
     // Identify all property assignments in the code as ranges
     const assignmentRanges: Array<{ start: number; end: number }> = [];
-    const assignmentRegex = /\b\w+\.\w+\s*=(?!=)/g;
+    const assignmentRegex =
+      /(?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+\s*=(?!=)/g;
     let match: RegExpExecArray | null;
 
     while ((match = assignmentRegex.exec(current)) !== null) {
