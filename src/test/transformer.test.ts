@@ -173,4 +173,37 @@ const name = user?.profile?.name;
       "super.data.items;"
     );
   });
+
+  test("Should protect namespaced JSX element tag names (<Modal.Header>)", () => {
+    assert.strictEqual(
+      processCodeSegment("<Modal.Header>Hello</Modal.Header>"),
+      "<Modal.Header>Hello</Modal.Header>"
+    );
+    assert.strictEqual(
+      processCodeSegment("<Modal.Header title={user.name} />"),
+      "<Modal.Header title={user?.name} />"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "<Card.Body.Item sub={details.title}>{user.address.city}</Card.Body.Item>"
+      ),
+      "<Card.Body.Item sub={details?.title}>{user?.address?.city}</Card.Body.Item>"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "return <Select.Option value={opt.id}>{opt.label}</Select.Option>;"
+      ),
+      "return <Select.Option value={opt?.id}>{opt?.label}</Select.Option>;"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "const el = <Dropdown.Menu onClick={() => user.select()} />;"
+      ),
+      "const el = <Dropdown.Menu onClick={() => user?.select()} />;"
+    );
+    assert.strictEqual(
+      processCodeSegment("if (count < max.length) {}"),
+      "if (count < max?.length) {}"
+    );
+  });
 });

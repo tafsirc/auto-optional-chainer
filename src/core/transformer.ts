@@ -97,6 +97,32 @@ export function processCodeSegment(
       });
     }
 
+    // Identify JSX namespaced tag names (e.g. <Modal.Header> and </Modal.Header>)
+    // Component names in JSX cannot have optional chaining inserted
+    const jsxTagRanges: Array<{ start: number; end: number }> = [];
+    const jsxOpenTagRegex =
+      /(?:^|[^\w$<=])<\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)(?=[\s/>])/g;
+
+    while ((match = jsxOpenTagRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      jsxTagRanges.push({
+        start,
+        end: start + match[1].length,
+      });
+    }
+
+    const jsxCloseTagRegex = /<\/\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)\s*>/g;
+
+    while ((match = jsxCloseTagRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      jsxTagRanges.push({
+        start,
+        end: start + match[1].length,
+      });
+    }
+
     // Process property access (supporting word characters, brackets, parentheses, and meta-properties before the dot)
     const dotAccessRegex =
       /((\bimport\s*\.\s*meta|\bnew\s*\.\s*target|\b\w+|\)|\]))\s*\.\s*(\w+)/g;
@@ -126,6 +152,9 @@ export function processCodeSegment(
       const isNewConstructor = newExpressionRanges.some(
         (range) => index >= range.start && index < range.end
       );
+      const isJsxTag = jsxTagRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
       // Meta-properties (import.meta, new.target) cannot have optional chaining inserted
       const isMetaProperty =
         (prefix === "import" && property === "meta") ||
@@ -136,6 +165,7 @@ export function processCodeSegment(
       if (
         !isAssignment &&
         !isNewConstructor &&
+        !isJsxTag &&
         !isMetaProperty &&
         !isNumber &&
         !activeIgnored.has(prefix)
