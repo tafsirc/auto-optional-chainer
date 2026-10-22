@@ -22,6 +22,21 @@ suite("Core Transformer Test Suite", () => {
     }
   });
 
+  test("Should preserve common Web and Node globals", () => {
+    assert.strictEqual(
+      processCodeSegment("const env = process.env.NODE_ENV;"),
+      "const env = process.env.NODE_ENV;"
+    );
+    assert.strictEqual(
+      processCodeSegment("window.location.href;"),
+      "window.location.href;"
+    );
+    assert.strictEqual(
+      processCodeSegment("Promise.resolve();"),
+      "Promise.resolve();"
+    );
+  });
+
   test("Should transform source code with string literal preservation", () => {
     const input =
       'const x = user.profile.name; const label = "user.profile.name";';
