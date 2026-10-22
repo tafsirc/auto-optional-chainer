@@ -60,6 +60,11 @@
           "default": false,
           "description": "Enable keyboard shortcut for applying optional chaining"
         },
+        "autoOptionalChainer.showNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notification toasts after applying optional chaining"
+        },
         "autoOptionalChainer.ignoredIdentifiers": {
           "type": "array",
           "items": {
