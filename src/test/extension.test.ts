@@ -22,7 +22,12 @@ function createMockDocument(
   languageId: string = "typescript"
 ): vscode.TextDocument {
   return {
-    getText: () => content,
+    getText: (range?: vscode.Range) => {
+      if (range) {
+        return content.slice(range.start.character, range.end.character);
+      }
+      return content;
+    },
     languageId: languageId,
     uri: vscode.Uri.file("test.ts"),
     version: 1,
