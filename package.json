@@ -60,6 +60,20 @@
           "default": false,
           "description": "Enable keyboard shortcut for applying optional chaining"
         },
+        "autoOptionalChainer.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/out/**",
+            "**/*.d.ts",
+            "**/*.min.js"
+          ],
+          "description": "Glob patterns of files and folders to exclude from optional chaining transformation"
+        },
         "autoOptionalChainer.ignoredIdentifiers": {
           "type": "array",
           "items": {

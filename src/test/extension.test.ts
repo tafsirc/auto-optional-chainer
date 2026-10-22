@@ -7,6 +7,7 @@ import {
   splitByStringLiterals,
   transformSourceCode,
   isSupportedDocument,
+  isDocumentExcluded,
 } from "../extension";
 
 // Mock the vscode.window.activeTextEditor
@@ -200,6 +201,24 @@ suite("AutoOptionalChainer Extension Test Suite", () => {
 
       const jsDoc = createMockDocument("", "javascript");
       assert.strictEqual(isSupportedDocument(jsDoc), true);
+    });
+
+    test("Should exclude documents matching exclusion patterns", () => {
+      const dtsDoc = {
+        ...createMockDocument("", "typescript"),
+        fileName: "types.d.ts",
+        uri: vscode.Uri.file("src/types.d.ts"),
+      } as any;
+      assert.strictEqual(isDocumentExcluded(dtsDoc), true);
+      assert.strictEqual(isSupportedDocument(dtsDoc), false);
+
+      const nodeModulesDoc = {
+        ...createMockDocument("", "typescript"),
+        fileName: "node_modules/pkg/index.js",
+        uri: vscode.Uri.file("/project/node_modules/pkg/index.js"),
+      } as any;
+      assert.strictEqual(isDocumentExcluded(nodeModulesDoc), true);
+      assert.strictEqual(isSupportedDocument(nodeModulesDoc), false);
     });
   });
 
