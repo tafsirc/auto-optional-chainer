@@ -12,12 +12,12 @@
   <a href="https://github.com/tafsirc/auto-optional-chainer/stargazers"><img src="https://img.shields.io/github/stars/tafsirc/auto-optional-chainer?style=flat&logo=github" alt="GitHub Stars" /></a>
   <a href="https://github.com/tafsirc/auto-optional-chainer"><img src="https://img.shields.io/badge/Coverage-88%25-brightgreen.svg" alt="Coverage" /></a>
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome" /></a>
-  <a href="https://codespaces.new/tafsirc/auto-optional-chainer"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" /></a>
+  <a href="https://codespaces.new/tafsirc/auto-optional-chainer"><img src="https://img.shields.io/badge/Codespaces-Open-blue?logo=github" alt="Open in GitHub Codespaces" /></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
 </p>
 
 <p align="center">
-  <img src="assets/demo.svg" alt="Auto Optional Chainer in Action" width="100%" />
+  <img src="assets/demo.png" alt="Auto Optional Chainer in Action" width="100%" />
 </p>
 
 ## Introduction
