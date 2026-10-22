@@ -8,6 +8,8 @@ import {
   transformSourceCode,
   isSupportedDocument,
   getDocumentTransformEdits,
+  getDocumentRangeTransformEdits,
+  SUPPORTED_LANGUAGES,
 } from "../extension";
 
 // Mock the vscode.window.activeTextEditor
@@ -496,6 +498,33 @@ suite("AutoOptionalChainer Extension Test Suite", () => {
         edits[0].newText,
         "<script>const x = user?.name;</script>"
       );
+    });
+
+    test("Should return replacement TextEdit for range formatting", () => {
+      const text = "const a = user.name; const b = person.age;";
+      const doc = createMockDocument(text);
+      const range = new vscode.Range(0, 0, 0, 20);
+      const edits = getDocumentRangeTransformEdits(doc, range);
+      assert.strictEqual(edits.length, 1);
+      assert.strictEqual(edits[0].newText, "const a = user?.name;");
+    });
+
+    test("Should return empty array when range requires no changes", () => {
+      const text = "const a = user?.name;";
+      const doc = createMockDocument(text);
+      const range = new vscode.Range(0, 0, 0, 21);
+      const edits = getDocumentRangeTransformEdits(doc, range);
+      assert.strictEqual(edits.length, 0);
+    });
+
+    test("SUPPORTED_LANGUAGES should contain expected web languages", () => {
+      assert.ok(SUPPORTED_LANGUAGES.includes("javascript"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("typescript"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("javascriptreact"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("typescriptreact"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("vue"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("svelte"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("astro"));
     });
   });
 });

@@ -174,7 +174,49 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(onWillSaveDisposable);
+
+  // Register formatting providers so users can format documents with Shift+Alt+F or defaultFormatter
+  const formattingProvider: vscode.DocumentFormattingEditProvider = {
+    provideDocumentFormattingEdits(
+      document: vscode.TextDocument
+    ): vscode.TextEdit[] {
+      return getDocumentTransformEdits(document);
+    },
+  };
+
+  const rangeFormattingProvider: vscode.DocumentRangeFormattingEditProvider = {
+    provideDocumentRangeFormattingEdits(
+      document: vscode.TextDocument,
+      range: vscode.Range
+    ): vscode.TextEdit[] {
+      return getDocumentRangeTransformEdits(document, range);
+    },
+  };
+
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider(
+      SUPPORTED_LANGUAGES,
+      formattingProvider
+    ),
+    vscode.languages.registerDocumentRangeFormattingEditProvider(
+      SUPPORTED_LANGUAGES,
+      rangeFormattingProvider
+    )
+  );
 }
+
+/**
+ * List of supported language identifiers for optional chaining transformation
+ */
+export const SUPPORTED_LANGUAGES: string[] = [
+  "javascript",
+  "typescript",
+  "javascriptreact",
+  "typescriptreact",
+  "vue",
+  "svelte",
+  "astro",
+];
 
 /**
  * Checks if the given document type is supported for optional chaining transformation
@@ -182,16 +224,7 @@ export function activate(context: vscode.ExtensionContext): void {
  * @returns true if the document is a JavaScript or TypeScript file (including React variants)
  */
 export function isSupportedDocument(document: vscode.TextDocument): boolean {
-  const supportedLanguageIds: string[] = [
-    "javascript",
-    "typescript",
-    "javascriptreact",
-    "typescriptreact",
-    "vue",
-    "svelte",
-    "astro",
-  ];
-  return supportedLanguageIds.includes(document.languageId);
+  return SUPPORTED_LANGUAGES.includes(document.languageId);
 }
 
 function getCustomIgnoredIdentifiers(): Set<string> {
@@ -201,6 +234,28 @@ function getCustomIgnoredIdentifiers(): Set<string> {
 }
 
 export function deactivate(): void {}
+
+/**
+ * Computes TextEdit array for transforming a specific range within a document
+ *
+ * @param document The VS Code text document
+ * @param range The range within the document to transform
+ * @returns Array of TextEdit operations to apply to the range
+ */
+export function getDocumentRangeTransformEdits(
+  document: vscode.TextDocument,
+  range: vscode.Range
+): vscode.TextEdit[] {
+  const selectedText = document.getText(range);
+  const customIgnored = getCustomIgnoredIdentifiers();
+  const processed = transformSourceCode(selectedText, customIgnored);
+
+  if (processed === selectedText) {
+    return [];
+  }
+
+  return [vscode.TextEdit.replace(range, processed)];
+}
 
 /**
  * Computes TextEdit array for transforming a document with optional chaining
