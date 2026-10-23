@@ -67,10 +67,10 @@ export function processCodeSegment(
   while (current !== previous) {
     previous = current;
 
-    // Identify all property assignments in the code as ranges
+    // Identify all property assignments (standard and compound) in the code as ranges
     const assignmentRanges: Array<{ start: number; end: number }> = [];
     const assignmentRegex =
-      /(?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+\s*=(?!=)/g;
+      /(?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+\s*(?:\+|-|\*\*|\*|\/|%|<<|>>>|>>|&&|&|\|\||\||\^|\?\?)?=(?!=)/g;
     let match: RegExpExecArray | null;
 
     while ((match = assignmentRegex.exec(current)) !== null) {

@@ -126,6 +126,69 @@ const name = user?.profile?.name;
     );
   });
 
+  test("Should handle compound assignments without transforming LHS", () => {
+    assert.strictEqual(
+      processCodeSegment("obj.count += 1;"),
+      "obj.count += 1;"
+    );
+    assert.strictEqual(
+      processCodeSegment("obj.total -= response.data.cost;"),
+      "obj.total -= response?.data?.cost;"
+    );
+    assert.strictEqual(
+      processCodeSegment("obj.config ||= {};"),
+      "obj.config ||= {};"
+    );
+    assert.strictEqual(
+      processCodeSegment("obj.name ??= 'Anonymous';"),
+      "obj.name ??= 'Anonymous';"
+    );
+    assert.strictEqual(
+      processCodeSegment("obj.flags &= mask.bit;"),
+      "obj.flags &= mask?.bit;"
+    );
+    assert.strictEqual(
+      processCodeSegment("state.nested.val *= factor.rate;"),
+      "state.nested.val *= factor?.rate;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value **= 2;"),
+      "item.value **= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value /= 2;"),
+      "item.value /= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value %= 2;"),
+      "item.value %= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value <<= 2;"),
+      "item.value <<= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value >>= 2;"),
+      "item.value >>= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value >>>= 2;"),
+      "item.value >>>= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value ^= 2;"),
+      "item.value ^= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value |= 2;"),
+      "item.value |= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value &&= true;"),
+      "item.value &&= true;"
+    );
+  });
+
   test("Should not transform new constructor expressions", () => {
     assert.strictEqual(processCodeSegment("new a.b()"), "new a.b()");
     assert.strictEqual(processCodeSegment("new a.b.c()"), "new a.b.c()");
