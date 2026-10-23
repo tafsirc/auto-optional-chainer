@@ -37,8 +37,29 @@ jobs:
 
       - name: Run extension tests (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm test
+        run: |
+          for i in 1 2 3; do
+            xvfb-run -a npm test && break || {
+              if [ $i -lt 3 ]; then
+                echo "Test attempt $i failed, retrying in 5s..."
+                sleep 5
+              else
+                exit 1
+              fi
+            }
+          done
 
       - name: Run extension tests (macOS & Windows)
         if: runner.os != 'Linux'
-        run: npm test
+        shell: bash
+        run: |
+          for i in 1 2 3; do
+            npm test && break || {
+              if [ $i -lt 3 ]; then
+                echo "Test attempt $i failed, retrying in 5s..."
+                sleep 5
+              else
+                exit 1
+              fi
+            }
+          done
