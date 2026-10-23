@@ -403,12 +403,27 @@ export function transformComponentDocument(
   source: string,
   customIgnored?: Set<string>
 ): string {
+  // Support Astro frontmatter delimited by ---
+  const frontmatterRegex = /^(---\r?\n)([\s\S]*?)(\r?\n---)/;
+  let transformed = source.replace(
+    frontmatterRegex,
+    (_match, openTag: string, frontmatterBody: string, closeTag: string) => {
+      const transformedBody = transformSourceCode(
+        frontmatterBody,
+        customIgnored
+      );
+      return `${openTag}${transformedBody}${closeTag}`;
+    }
+  );
+
   const scriptRegex = /(<script\b[^>]*>)([\s\S]*?)(<\/script>)/gi;
-  return source.replace(
+  transformed = transformed.replace(
     scriptRegex,
     (_match, openTag: string, scriptBody: string, closeTag: string) => {
       const transformedScript = transformSourceCode(scriptBody, customIgnored);
       return `${openTag}${transformedScript}${closeTag}`;
     }
   );
+
+  return transformed;
 }

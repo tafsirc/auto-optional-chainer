@@ -86,6 +86,22 @@ const name = user?.profile?.name;
     assert.strictEqual(transformComponentDocument(component), expected);
   });
 
+  test("Should transform Astro frontmatter code fences", () => {
+    const astroDoc = `---
+const user = await fetchUser();
+const name = user.profile.name;
+---
+<div>{name}</div>`;
+
+    const expected = `---
+const user = await fetchUser();
+const name = user?.profile?.name;
+---
+<div>{name}</div>`;
+
+    assert.strictEqual(transformComponentDocument(astroDoc), expected);
+  });
+
   test("Should not transform floating point number literals", () => {
     assert.strictEqual(
       processCodeSegment("const pi = 3.14;"),
