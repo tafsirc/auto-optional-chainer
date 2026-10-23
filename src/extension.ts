@@ -82,21 +82,33 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showErrorMessage("File type not supported");
         return;
       }
-      const selection = editor.selection;
-      if (selection.isEmpty) {
+      const activeSelections = editor.selections.filter((s) => !s.isEmpty);
+      if (activeSelections.length === 0) {
         vscode.window.showInformationMessage("No text selected");
         return;
       }
-      const selectedText = document.getText(selection);
       const customIgnored = getCustomIgnoredIdentifiers();
-      const processed = transformSourceCode(selectedText, customIgnored);
-      if (processed !== selectedText) {
-        await editor.edit(
-          (editBuilder) => {
-            editBuilder.replace(selection, processed);
-          },
-          { undoStopBefore: true, undoStopAfter: true }
-        );
+      const isComponent = ["vue", "svelte", "astro"].includes(
+        document.languageId
+      );
+
+      let hasChanges = false;
+      await editor.edit(
+        (editBuilder) => {
+          for (const sel of activeSelections) {
+            const selectedText = document.getText(sel);
+            const processed = isComponent
+              ? transformComponentDocument(selectedText, customIgnored)
+              : transformSourceCode(selectedText, customIgnored);
+            if (processed !== selectedText) {
+              editBuilder.replace(sel, processed);
+              hasChanges = true;
+            }
+          }
+        },
+        { undoStopBefore: true, undoStopAfter: true }
+      );
+      if (hasChanges) {
         vscode.window.showInformationMessage(
           "Optional Chaining Applied to Selection"
         );
