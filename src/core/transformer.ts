@@ -80,6 +80,27 @@ export function processCodeSegment(
       });
     }
 
+    // Identify update expressions (increment and decrement) in the code as ranges
+    // Optional chaining is invalid on the target of an update expression (ECMA-262)
+    const updateRanges: Array<{ start: number; end: number }> = [];
+    const postfixUpdateRegex =
+      /(?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+\s*(?:\+\+|--)/g;
+    while ((match = postfixUpdateRegex.exec(current)) !== null) {
+      updateRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    }
+
+    const prefixUpdateRegex =
+      /(?<![+\-])(?:\+\+|--)\s*((?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+)/g;
+    while ((match = prefixUpdateRegex.exec(current)) !== null) {
+      updateRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    }
+
     // Identify target constructor expressions in 'new' invocations
     // Optional chaining is invalid in the callee of a new expression (ECMA-262)
     const newExpressionRanges: Array<{ start: number; end: number }> = [];
@@ -149,6 +170,9 @@ export function processCodeSegment(
       const isAssignment = assignmentRanges.some(
         (range) => index >= range.start && index < range.end
       );
+      const isUpdate = updateRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
       const isNewConstructor = newExpressionRanges.some(
         (range) => index >= range.start && index < range.end
       );
@@ -164,6 +188,7 @@ export function processCodeSegment(
 
       if (
         !isAssignment &&
+        !isUpdate &&
         !isNewConstructor &&
         !isJsxTag &&
         !isMetaProperty &&

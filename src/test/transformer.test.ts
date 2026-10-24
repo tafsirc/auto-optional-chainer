@@ -205,6 +205,37 @@ const name = user?.profile?.name;
     );
   });
 
+  test("Should not transform increment and decrement update expressions", () => {
+    assert.strictEqual(processCodeSegment("obj.count++;"), "obj.count++;");
+    assert.strictEqual(processCodeSegment("obj.count--;"), "obj.count--;");
+    assert.strictEqual(processCodeSegment("++obj.total;"), "++obj.total;");
+    assert.strictEqual(processCodeSegment("--obj.total;"), "--obj.total;");
+    assert.strictEqual(
+      processCodeSegment("user.profile.score++;"),
+      "user.profile.score++;"
+    );
+    assert.strictEqual(
+      processCodeSegment("++user.profile.score;"),
+      "++user.profile.score;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const next = ++counter.value + data.item.val;"),
+      "const next = ++counter.value + data?.item?.val;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const prev = counter.value-- - data.item.val;"),
+      "const prev = counter.value-- - data?.item?.val;"
+    );
+    assert.strictEqual(
+      processCodeSegment("x = a.b + obj.count++;"),
+      "x = a?.b + obj.count++;"
+    );
+    assert.strictEqual(
+      processCodeSegment("for (let i = 0; obj.count++ < 10; ) {}"),
+      "for (let i = 0; obj.count++ < 10; ) {}"
+    );
+  });
+
   test("Should not transform new constructor expressions", () => {
     assert.strictEqual(processCodeSegment("new a.b()"), "new a.b()");
     assert.strictEqual(processCodeSegment("new a.b.c()"), "new a.b.c()");
