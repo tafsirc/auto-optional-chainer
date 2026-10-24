@@ -101,6 +101,20 @@ export function processCodeSegment(
       });
     }
 
+    // Identify class extends expressions
+    // Optional chaining is invalid in class extends / heritage clauses (ECMA-262)
+    const classExtendsRanges: Array<{ start: number; end: number }> = [];
+    const extendsRegex =
+      /\bextends\s*(?:\(\s*)?([\w$]+(?:\s*\[[^\]]*\]|\s*\.\s*[\w$]+)*)/g;
+    while ((match = extendsRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      classExtendsRanges.push({
+        start,
+        end: start + match[1].length,
+      });
+    }
+
     // Identify target constructor expressions in 'new' invocations
     // Optional chaining is invalid in the callee of a new expression (ECMA-262)
     const newExpressionRanges: Array<{ start: number; end: number }> = [];
@@ -173,6 +187,9 @@ export function processCodeSegment(
       const isUpdate = updateRanges.some(
         (range) => index >= range.start && index < range.end
       );
+      const isClassExtends = classExtendsRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
       const isNewConstructor = newExpressionRanges.some(
         (range) => index >= range.start && index < range.end
       );
@@ -189,6 +206,7 @@ export function processCodeSegment(
       if (
         !isAssignment &&
         !isUpdate &&
+        !isClassExtends &&
         !isNewConstructor &&
         !isJsxTag &&
         !isMetaProperty &&
