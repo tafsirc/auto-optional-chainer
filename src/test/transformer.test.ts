@@ -275,6 +275,55 @@ const name = user?.profile?.name;
     );
   });
 
+  test("Should not transform TypeScript type annotations", () => {
+    assert.strictEqual(
+      processCodeSegment("function foo(x: MyNamespace.MyType) {}"),
+      "function foo(x: MyNamespace.MyType) {}"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "function foo(x: MyNamespace.MyType, y: Other.Type): Response.Data { return res.data.items; }"
+      ),
+      "function foo(x: MyNamespace.MyType, y: Other.Type): Response.Data { return res?.data?.items; }"
+    );
+    assert.strictEqual(
+      processCodeSegment("const res: Express.Request = req.data.value;"),
+      "const res: Express.Request = req?.data?.value;"
+    );
+    assert.strictEqual(
+      processCodeSegment("let a: Express.Request;"),
+      "let a: Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("type Handler = Express.Request;"),
+      "type Handler = Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const x = req as Express.Request;"),
+      "const x = req as Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const x = req.user as Express.Request;"),
+      "const x = req?.user as Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const x = req satisfies Express.Request;"),
+      "const x = req satisfies Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const p: Promise<Express.Request> = fetchReq();"),
+      "const p: Promise<Express.Request> = fetchReq();"
+    );
+    assert.strictEqual(
+      processCodeSegment("const p = fetch<Express.Request>(url.endpoint);"),
+      "const p = fetch<Express.Request>(url?.endpoint);"
+    );
+    assert.strictEqual(
+      processCodeSegment("function isReq(x: any): x is Express.Request {}"),
+      "function isReq(x: any): x is Express.Request {}"
+    );
+  });
+
   test("Should not transform new constructor expressions", () => {
     assert.strictEqual(processCodeSegment("new a.b()"), "new a.b()");
     assert.strictEqual(processCodeSegment("new a.b.c()"), "new a.b.c()");
