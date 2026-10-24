@@ -236,6 +236,45 @@ const name = user?.profile?.name;
     );
   });
 
+  test("Should not transform class extends clauses", () => {
+    assert.strictEqual(
+      processCodeSegment("class User extends Base.Model {}"),
+      "class User extends Base.Model {}"
+    );
+    assert.strictEqual(
+      processCodeSegment("class User extends Base.Model.SubClass {}"),
+      "class User extends Base.Model.SubClass {}"
+    );
+    assert.strictEqual(
+      processCodeSegment("const User = class extends Base.Model {};"),
+      "const User = class extends Base.Model {};"
+    );
+    assert.strictEqual(
+      processCodeSegment("export class Admin extends Org.User.Base {}"),
+      "export class Admin extends Org.User.Base {}"
+    );
+    assert.strictEqual(
+      processCodeSegment("class Component extends Framework.UI.View<Props> {}"),
+      "class Component extends Framework.UI.View<Props> {}"
+    );
+    assert.strictEqual(
+      processCodeSegment("class A extends (B.C) {}"),
+      "class A extends (B.C) {}"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "class User extends Base.Model { getName() { return user.profile.name; } }"
+      ),
+      "class User extends Base.Model { getName() { return user?.profile?.name; } }"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "const a = foo.bar; class B extends C.D {} const b = baz.qux;"
+      ),
+      "const a = foo?.bar; class B extends C.D {} const b = baz?.qux;"
+    );
+  });
+
   test("Should not transform new constructor expressions", () => {
     assert.strictEqual(processCodeSegment("new a.b()"), "new a.b()");
     assert.strictEqual(processCodeSegment("new a.b.c()"), "new a.b.c()");
