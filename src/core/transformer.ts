@@ -115,6 +115,149 @@ export function processCodeSegment(
       });
     }
 
+    // Identify TypeScript type annotation contexts
+    // Types represent static compile-time contracts and cannot contain optional chaining
+    const typeAnnotationRanges: Array<{ start: number; end: number }> = [];
+
+    // 1. "as" and "satisfies" assertions: expr as Namespace.Type, expr satisfies Namespace.Type
+    const asSatisfiesRegex =
+      /\b(?:as|satisfies)\s+([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = asSatisfiesRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 2. Type predicate: x is Namespace.Type
+    const isTypeRegex = /\bis\s+([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = isTypeRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 3. Whole "type" alias definitions: type X = ...;
+    const typeAliasRegex =
+      /\btype\s+[A-Za-z_$][\w$]*(?:<[^>]*>)?\s*=\s*([^;]+)(?:;|\n|$)/g;
+    while ((match = typeAliasRegex.exec(current)) !== null) {
+      typeAnnotationRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    }
+
+    // 4. Whole "interface" definitions: interface X { ... }
+    const interfaceRegex =
+      /\binterface\s+[A-Za-z_$][\w$]*(?:<[^>]*>)?(?:\s+extends\s+[^{]+)?\s*\{[\s\S]*?\}/g;
+    while ((match = interfaceRegex.exec(current)) !== null) {
+      typeAnnotationRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    }
+
+    // 5. Generic type arguments: <...Namespace.Type...> attached to an identifier or after a generic
+    const genericCallRegex = /(?:[A-Za-z_$][\w$]*|>\s*)\s*<([^{};=]+)>/g;
+    while ((match = genericCallRegex.exec(current)) !== null) {
+      const inner = match[1];
+      if (!/[=+\/*%&|^!]|(?:if|return|while|for)/.test(inner)) {
+        const typeRefRegex = /\b([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+        let innerMatch: RegExpExecArray | null;
+        const baseOffset = match.index + match[0].indexOf(inner);
+        while ((innerMatch = typeRefRegex.exec(inner)) !== null) {
+          typeAnnotationRanges.push({
+            start: baseOffset + innerMatch.index,
+            end: baseOffset + innerMatch.index + innerMatch[0].length,
+          });
+        }
+      }
+    }
+
+    // 6. Variable declarations with explicit type annotations: const/let/var x: Namespace.Type
+    const varTypeRegex =
+      /\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = varTypeRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 7. Member property declarations with access modifiers: public/private/protected/readonly/static x: Namespace.Type
+    const memberTypeRegex =
+      /\b(?:public|private|protected|readonly|static)\s+(?:readonly\s+)?[A-Za-z_$][\w$]*\s*\??:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = memberTypeRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 8. Function return types: ): Namespace.Type
+    const returnTypeRegex = /\)\s*:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = returnTypeRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 9. Function parameter types: (x: Namespace.Type) or (x?: Namespace.Type)
+    const colonTypeRegex = /:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = colonTypeRegex.exec(current)) !== null) {
+      const colonIndex = match.index;
+      const typeStart = colonIndex + match[0].indexOf(match[1]);
+      const typeLen = match[1].length;
+
+      const stack: string[] = [];
+      for (let i = 0; i < colonIndex; i++) {
+        const ch = current[i];
+        if (ch === "(" || ch === "{" || ch === "[") {
+          stack.push(ch);
+        } else if (ch === ")") {
+          if (stack[stack.length - 1] === "(") {
+            stack.pop();
+          }
+        } else if (ch === "}") {
+          if (stack[stack.length - 1] === "{") {
+            stack.pop();
+          }
+        } else if (ch === "]") {
+          if (stack[stack.length - 1] === "[") {
+            stack.pop();
+          }
+        }
+      }
+
+      if (stack.length > 0 && stack[stack.length - 1] === "(") {
+        let isTernary = false;
+        let depth = 0;
+        for (let i = colonIndex - 1; i >= 0; i--) {
+          const ch = current[i];
+          if (ch === ")" || ch === "}" || ch === "]") {
+            depth++;
+          } else if (ch === "(" || ch === "{" || ch === "[") {
+            if (depth === 0) {
+              break;
+            }
+            depth--;
+          } else if (depth === 0 && (ch === "," || ch === ";")) {
+            break;
+          } else if (ch === "?" && depth === 0) {
+            const between = current.slice(i + 1, colonIndex).trim();
+            if (between.length > 0) {
+              isTernary = true;
+            }
+            break;
+          }
+        }
+
+        if (!isTernary) {
+          typeAnnotationRanges.push({
+            start: typeStart,
+            end: typeStart + typeLen,
+          });
+        }
+      }
+    }
+
     // Identify target constructor expressions in 'new' invocations
     // Optional chaining is invalid in the callee of a new expression (ECMA-262)
     const newExpressionRanges: Array<{ start: number; end: number }> = [];
@@ -190,6 +333,9 @@ export function processCodeSegment(
       const isClassExtends = classExtendsRanges.some(
         (range) => index >= range.start && index < range.end
       );
+      const isTypeAnnotation = typeAnnotationRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
       const isNewConstructor = newExpressionRanges.some(
         (range) => index >= range.start && index < range.end
       );
@@ -207,6 +353,7 @@ export function processCodeSegment(
         !isAssignment &&
         !isUpdate &&
         !isClassExtends &&
+        !isTypeAnnotation &&
         !isNewConstructor &&
         !isJsxTag &&
         !isMetaProperty &&
