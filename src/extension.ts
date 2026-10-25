@@ -270,6 +270,53 @@ export function getDocumentRangeTransformEdits(
 }
 
 /**
+ * Computes minimal granular TextEdits by comparing original and transformed text line by line.
+ * Replaces only lines that actually changed, preserving editor folding, cursor positioning,
+ * and reducing strain on language servers.
+ *
+ * @param document The VS Code text document
+ * @param originalText The original document text
+ * @param processedText The transformed document text
+ * @returns Array of minimal granular TextEdits
+ */
+export function computeGranularTextEdits(
+  document: vscode.TextDocument,
+  originalText: string,
+  processedText: string
+): vscode.TextEdit[] {
+  if (originalText === processedText) {
+    return [];
+  }
+
+  const isCrlf = originalText.includes("\r\n");
+  const delimiter = isCrlf ? "\r\n" : "\n";
+  const origLines = originalText.split(delimiter);
+  const procLines = processedText.split(delimiter);
+
+  // If line counts do not match, fall back to replacing the full document range
+  if (origLines.length !== procLines.length) {
+    const fullRange = new vscode.Range(
+      document.positionAt(0),
+      document.positionAt(originalText.length)
+    );
+    return [vscode.TextEdit.replace(fullRange, processedText)];
+  }
+
+  const edits: vscode.TextEdit[] = [];
+  for (let i = 0; i < origLines.length; i++) {
+    if (origLines[i] !== procLines[i]) {
+      const lineRange = new vscode.Range(
+        new vscode.Position(i, 0),
+        new vscode.Position(i, origLines[i].length)
+      );
+      edits.push(vscode.TextEdit.replace(lineRange, procLines[i]));
+    }
+  }
+
+  return edits;
+}
+
+/**
  * Computes TextEdit array for transforming a document with optional chaining
  *
  * @param document The VS Code text document to transform
@@ -285,16 +332,7 @@ export function getDocumentTransformEdits(
     ? transformComponentDocument(originalText, customIgnored)
     : transformSourceCode(originalText, customIgnored);
 
-  if (processed === originalText) {
-    return [];
-  }
-
-  const fullRange = new vscode.Range(
-    document.positionAt(0),
-    document.positionAt(originalText.length)
-  );
-
-  return [vscode.TextEdit.replace(fullRange, processed)];
+  return computeGranularTextEdits(document, originalText, processed);
 }
 
 /**
@@ -311,7 +349,6 @@ export async function applyOptionalChaining(
     return;
   }
 
-  const edit = edits[0];
   const visibleEditor = vscode.window.visibleTextEditors.find(
     (e) => e.document.uri.toString() === document.uri.toString()
   );
@@ -319,13 +356,17 @@ export async function applyOptionalChaining(
   if (visibleEditor) {
     await visibleEditor.edit(
       (editBuilder) => {
-        editBuilder.replace(edit.range, edit.newText);
+        for (const edit of edits) {
+          editBuilder.replace(edit.range, edit.newText);
+        }
       },
       { undoStopBefore: true, undoStopAfter: true }
     );
   } else {
     const wsEdit = new vscode.WorkspaceEdit();
-    wsEdit.replace(document.uri, edit.range, edit.newText);
+    for (const edit of edits) {
+      wsEdit.replace(document.uri, edit.range, edit.newText);
+    }
     await vscode.workspace.applyEdit(wsEdit);
   }
 }
