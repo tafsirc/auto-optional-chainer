@@ -213,6 +213,14 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.languages.registerDocumentRangeFormattingEditProvider(
       SUPPORTED_LANGUAGES,
       rangeFormattingProvider
+    ),
+    vscode.languages.registerCodeActionsProvider(
+      SUPPORTED_LANGUAGES,
+      new OptionalChainingCodeActionProvider(),
+      {
+        providedCodeActionKinds:
+          OptionalChainingCodeActionProvider.providedCodeActionKinds,
+      }
     )
   );
 }
@@ -368,5 +376,90 @@ export async function applyOptionalChaining(
       wsEdit.replace(document.uri, edit.range, edit.newText);
     }
     await vscode.workspace.applyEdit(wsEdit);
+  }
+}
+
+/**
+ * Quick Fix Code Action Provider for automatically inserting optional chaining (?.)
+ * at compiler diagnostic locations (e.g. TS2532, TS18048, TS2533) or cursor/selection ranges.
+ */
+export class OptionalChainingCodeActionProvider
+  implements vscode.CodeActionProvider
+{
+  public static readonly providedCodeActionKinds = [
+    vscode.CodeActionKind.QuickFix,
+  ];
+
+  public provideCodeActions(
+    document: vscode.TextDocument,
+    range: vscode.Range | vscode.Selection,
+    context: vscode.CodeActionContext
+  ): vscode.CodeAction[] {
+    if (!isSupportedDocument(document)) {
+      return [];
+    }
+
+    const actions: vscode.CodeAction[] = [];
+    const customIgnored = getCustomIgnoredIdentifiers();
+
+    // 1. Diagnostics-driven Quick Fixes:
+    // Match TypeScript diagnostics: TS2532, TS18048, TS2533, or null/undefined error messages
+    const tsNullDiagnostics = (context.diagnostics || []).filter((d) => {
+      const codeStr = String(d.code ?? "");
+      const isTargetCode =
+        codeStr === "2532" ||
+        codeStr === "18048" ||
+        codeStr === "2533" ||
+        codeStr === "TS2532" ||
+        codeStr === "TS18048" ||
+        codeStr === "TS2533";
+      const isTargetMessage =
+        d.message.includes("possibly 'undefined'") ||
+        d.message.includes("possibly 'null'") ||
+        d.message.includes("is undefined") ||
+        d.message.includes("is null");
+      return isTargetCode || isTargetMessage;
+    });
+
+    for (const diagnostic of tsNullDiagnostics) {
+      const line = document.lineAt(diagnostic.range.start.line);
+      const lineText = line.text;
+      const transformedLine = transformSourceCode(lineText, customIgnored);
+
+      if (transformedLine !== lineText) {
+        const action = new vscode.CodeAction(
+          "Add optional chaining (?.)",
+          vscode.CodeActionKind.QuickFix
+        );
+        action.edit = new vscode.WorkspaceEdit();
+        action.edit.replace(document.uri, line.range, transformedLine);
+        action.diagnostics = [diagnostic];
+        action.isPreferred = true;
+        actions.push(action);
+      }
+    }
+
+    // 2. Selection or cursor range Quick Fix:
+    // If invoked on member access without a specific compiler diagnostic
+    if (actions.length === 0) {
+      const targetRange = range.isEmpty
+        ? document.lineAt(range.start.line).range
+        : range;
+      const text = document.getText(targetRange);
+      const transformed = transformSourceCode(text, customIgnored);
+
+      if (transformed !== text) {
+        const action = new vscode.CodeAction(
+          "Add optional chaining (?.)",
+          vscode.CodeActionKind.QuickFix
+        );
+        action.edit = new vscode.WorkspaceEdit();
+        action.edit.replace(document.uri, targetRange, transformed);
+        action.isPreferred = true;
+        actions.push(action);
+      }
+    }
+
+    return actions;
   }
 }

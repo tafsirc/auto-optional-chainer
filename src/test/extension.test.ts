@@ -10,6 +10,7 @@ import {
   getDocumentTransformEdits,
   getDocumentRangeTransformEdits,
   computeGranularTextEdits,
+  OptionalChainingCodeActionProvider,
   SUPPORTED_LANGUAGES,
 } from "../extension";
 
@@ -548,6 +549,105 @@ suite("AutoOptionalChainer Extension Test Suite", () => {
       assert.ok(SUPPORTED_LANGUAGES.includes("vue"));
       assert.ok(SUPPORTED_LANGUAGES.includes("svelte"));
       assert.ok(SUPPORTED_LANGUAGES.includes("astro"));
+    });
+  });
+
+  // Test suite for Quick Fix Code Action Provider
+  suite("Quick Fix Code Action Provider", () => {
+    const provider = new OptionalChainingCodeActionProvider();
+
+    test("Should provide Quick Fix code action for TS2532 diagnostic", () => {
+      const doc = createMockDocument("const x = user.profile.name;");
+      const range = new vscode.Range(0, 10, 0, 14);
+      const diagnostic = new vscode.Diagnostic(
+        range,
+        "Object is possibly 'undefined'",
+        vscode.DiagnosticSeverity.Error
+      );
+      diagnostic.code = "2532";
+
+      const actions = provider.provideCodeActions(doc, range, {
+        diagnostics: [diagnostic],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+
+      assert.strictEqual(actions.length, 1);
+      assert.strictEqual(actions[0].title, "Add optional chaining (?.)");
+      assert.strictEqual(actions[0].kind, vscode.CodeActionKind.QuickFix);
+      assert.strictEqual(actions[0].isPreferred, true);
+      assert.strictEqual(actions[0].diagnostics?.[0], diagnostic);
+      const edits = actions[0].edit?.get(doc.uri);
+      assert.ok(edits && edits.length > 0);
+      assert.strictEqual(edits[0].newText, "const x = user?.profile?.name;");
+    });
+
+    test("Should provide Quick Fix code action for TS18048 and TS2533 diagnostics", () => {
+      const doc = createMockDocument("const val = data.items.length;");
+      const range = new vscode.Range(0, 12, 0, 17);
+      const diag18048 = new vscode.Diagnostic(
+        range,
+        "'data' is possibly 'undefined'",
+        vscode.DiagnosticSeverity.Error
+      );
+      diag18048.code = "TS18048";
+
+      const actions18048 = provider.provideCodeActions(doc, range, {
+        diagnostics: [diag18048],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+      assert.strictEqual(actions18048.length, 1);
+      assert.strictEqual(actions18048[0].title, "Add optional chaining (?.)");
+
+      const diag2533 = new vscode.Diagnostic(
+        range,
+        "Object is possibly 'null'",
+        vscode.DiagnosticSeverity.Error
+      );
+      diag2533.code = 2533;
+      const actions2533 = provider.provideCodeActions(doc, range, {
+        diagnostics: [diag2533],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+      assert.strictEqual(actions2533.length, 1);
+      assert.strictEqual(actions2533[0].title, "Add optional chaining (?.)");
+    });
+
+    test("Should provide Quick Fix code action on selection without diagnostics", () => {
+      const doc = createMockDocument("const x = user.profile.name;");
+      const range = new vscode.Range(0, 0, 0, 28);
+      const actions = provider.provideCodeActions(doc, range, {
+        diagnostics: [],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+      assert.strictEqual(actions.length, 1);
+      assert.strictEqual(actions[0].title, "Add optional chaining (?.)");
+      const edits = actions[0].edit?.get(doc.uri);
+      assert.ok(edits && edits.length > 0);
+      assert.strictEqual(edits[0].newText, "const x = user?.profile?.name;");
+    });
+
+    test("Should return empty array when code is already optional chained or language unsupported", () => {
+      const doc = createMockDocument("const x = user?.profile?.name;");
+      const range = new vscode.Range(0, 0, 0, 30);
+      const actions = provider.provideCodeActions(doc, range, {
+        diagnostics: [],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+      assert.strictEqual(actions.length, 0);
+
+      const plaintextDoc = createMockDocument(
+        "const x = user.name;",
+        "plaintext"
+      );
+      const actionsPlaintext = provider.provideCodeActions(
+        plaintextDoc,
+        range,
+        {
+          diagnostics: [],
+          triggerKind: vscode.CodeActionTriggerKind.Invoke,
+        } as any
+      );
+      assert.strictEqual(actionsPlaintext.length, 0);
     });
   });
 });
