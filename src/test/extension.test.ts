@@ -9,6 +9,7 @@ import {
   isSupportedDocument,
   getDocumentTransformEdits,
   getDocumentRangeTransformEdits,
+  computeGranularTextEdits,
   SUPPORTED_LANGUAGES,
 } from "../extension";
 
@@ -503,6 +504,23 @@ suite("AutoOptionalChainer Extension Test Suite", () => {
         edits[0].newText,
         "<script>const x = user?.name;</script>"
       );
+    });
+
+    test("Should produce granular line-level diffs only for modified lines in multi-line documents", () => {
+      const multiLine = [
+        "const a = 1;",
+        "const x = user.profile.name;",
+        "const b = 2;",
+        "const y = post.author.title;",
+        "const c = 3;",
+      ].join("\n");
+      const doc = createMockDocument(multiLine);
+      const edits = getDocumentTransformEdits(doc);
+      assert.strictEqual(edits.length, 2);
+      assert.strictEqual(edits[0].range.start.line, 1);
+      assert.strictEqual(edits[0].newText, "const x = user?.profile?.name;");
+      assert.strictEqual(edits[1].range.start.line, 3);
+      assert.strictEqual(edits[1].newText, "const y = post?.author?.title;");
     });
 
     test("Should return replacement TextEdit for range formatting", () => {
