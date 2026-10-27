@@ -41,6 +41,39 @@ export const ignoredIdentifiers = new Set<string>([
 ]);
 
 /**
+ * Options for configuring transformation behavior
+ */
+export interface TransformerOptions {
+  customIgnored?: Set<string>;
+  chainOptionalInvocations?: boolean;
+}
+
+function resolveTransformerOptions(
+  customIgnoredOrOptions?: Set<string> | TransformerOptions,
+  options?: TransformerOptions
+): { customIgnored?: Set<string>; chainOptionalInvocations: boolean } {
+  if (customIgnoredOrOptions instanceof Set) {
+    return {
+      customIgnored: customIgnoredOrOptions,
+      chainOptionalInvocations: options?.chainOptionalInvocations ?? false,
+    };
+  }
+  if (customIgnoredOrOptions && typeof customIgnoredOrOptions === "object") {
+    return {
+      customIgnored: customIgnoredOrOptions.customIgnored,
+      chainOptionalInvocations:
+        customIgnoredOrOptions.chainOptionalInvocations ??
+        options?.chainOptionalInvocations ??
+        false,
+    };
+  }
+  return {
+    customIgnored: options?.customIgnored,
+    chainOptionalInvocations: options?.chainOptionalInvocations ?? false,
+  };
+}
+
+/**
  * Processes a code segment to add optional chaining operators
  * Handles complex cases like:
  * - Nested property access (e.g., user.address.street -> user?.address?.street)
@@ -49,13 +82,19 @@ export const ignoredIdentifiers = new Set<string>([
  * - Ignoring built-in objects (e.g., console.log)
  *
  * @param segment The code segment to process
- * @param customIgnored Optional set of custom identifiers to ignore
+ * @param customIgnoredOrOptions Optional set of custom identifiers to ignore or options object
+ * @param options Optional configuration options
  * @returns The processed code segment with optional chaining added
  */
 export function processCodeSegment(
   segment: string,
-  customIgnored?: Set<string>
+  customIgnoredOrOptions?: Set<string> | TransformerOptions,
+  options?: TransformerOptions
 ): string {
+  const { customIgnored, chainOptionalInvocations } = resolveTransformerOptions(
+    customIgnoredOrOptions,
+    options
+  );
   const activeIgnored = customIgnored
     ? new Set([...ignoredIdentifiers, ...customIgnored])
     : ignoredIdentifiers;
@@ -365,6 +404,11 @@ export function processCodeSegment(
         current = before + `${prefix}?.${property}` + after;
       }
     });
+
+    if (chainOptionalInvocations) {
+      const methodCallRegex = /(\?\.\s*[A-Za-z_$][\w$]*)\s*(?<!\?\.)\(/g;
+      current = current.replace(methodCallRegex, "$1?.(");
+    }
   }
 
   return current;
@@ -566,17 +610,20 @@ export function splitByStringLiterals(text: string): Segment[] {
  * while preserving string literals and ignored identifiers.
  *
  * @param source Source code text
- * @param customIgnored Optional set of custom identifiers to ignore
+ * @param customIgnoredOrOptions Optional set of custom identifiers to ignore or options object
+ * @param options Optional configuration options
  * @returns Transformed source code string
  */
 export function transformSourceCode(
   source: string,
-  customIgnored?: Set<string>
+  customIgnoredOrOptions?: Set<string> | TransformerOptions,
+  options?: TransformerOptions
 ): string {
+  const resolved = resolveTransformerOptions(customIgnoredOrOptions, options);
   const segments = splitByStringLiterals(source);
   return segments
     .map((seg) =>
-      seg.isCode ? processCodeSegment(seg.text, customIgnored) : seg.text
+      seg.isCode ? processCodeSegment(seg.text, resolved) : seg.text
     )
     .join("");
 }
@@ -586,22 +633,22 @@ export function transformSourceCode(
  * specifically within <script> blocks while preserving templates and styles.
  *
  * @param source Component source code
- * @param customIgnored Optional custom identifiers to ignore
+ * @param customIgnoredOrOptions Optional set of custom identifiers to ignore or options object
+ * @param options Optional configuration options
  * @returns Transformed component code
  */
 export function transformComponentDocument(
   source: string,
-  customIgnored?: Set<string>
+  customIgnoredOrOptions?: Set<string> | TransformerOptions,
+  options?: TransformerOptions
 ): string {
+  const resolved = resolveTransformerOptions(customIgnoredOrOptions, options);
   // Support Astro frontmatter delimited by ---
   const frontmatterRegex = /^(---\r?\n)([\s\S]*?)(\r?\n---)/;
   let transformed = source.replace(
     frontmatterRegex,
     (_match, openTag: string, frontmatterBody: string, closeTag: string) => {
-      const transformedBody = transformSourceCode(
-        frontmatterBody,
-        customIgnored
-      );
+      const transformedBody = transformSourceCode(frontmatterBody, resolved);
       return `${openTag}${transformedBody}${closeTag}`;
     }
   );
@@ -610,7 +657,7 @@ export function transformComponentDocument(
   transformed = transformed.replace(
     scriptRegex,
     (_match, openTag: string, scriptBody: string, closeTag: string) => {
-      const transformedScript = transformSourceCode(scriptBody, customIgnored);
+      const transformedScript = transformSourceCode(scriptBody, resolved);
       return `${openTag}${transformedScript}${closeTag}`;
     }
   );

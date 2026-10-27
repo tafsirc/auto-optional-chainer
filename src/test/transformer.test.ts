@@ -404,4 +404,67 @@ const name = user?.profile?.name;
       "if (count < max?.length) {}"
     );
   });
+
+  test("Should support optional call invocation syntax when chainOptionalInvocations is enabled", () => {
+    assert.strictEqual(
+      processCodeSegment("props.onSuccess(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "props?.onSuccess?.(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("props?.onSuccess(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "props?.onSuccess?.(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("props?.onSuccess?.(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "props?.onSuccess?.(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("api.client.fetch(url, options);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "api?.client?.fetch?.(url, options);"
+    );
+    assert.strictEqual(
+      processCodeSegment("a.b().c();", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "a?.b?.()?.c?.();"
+    );
+    assert.strictEqual(
+      processCodeSegment("console.log(user.getName());", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "console.log(user?.getName?.());"
+    );
+    assert.strictEqual(
+      processCodeSegment("new service.Client(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "new service.Client(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("super.render(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "super.render(data);"
+    );
+
+    // Default remains disabled for backward compatibility
+    assert.strictEqual(
+      processCodeSegment("props.onSuccess(data);"),
+      "props?.onSuccess(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("props.onSuccess(data);", undefined, {
+        chainOptionalInvocations: false,
+      }),
+      "props?.onSuccess(data);"
+    );
+  });
 });
