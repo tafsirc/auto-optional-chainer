@@ -27,6 +27,7 @@ import {
   processCodeSegment,
   splitByStringLiterals,
   Segment,
+  TransformerOptions,
 } from "./core/transformer";
 
 // Re-export core transformer functions and types for consumers and tests
@@ -37,6 +38,7 @@ export {
   processCodeSegment,
   splitByStringLiterals,
   Segment,
+  TransformerOptions,
 };
 
 /**
@@ -87,7 +89,7 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showInformationMessage("No text selected");
         return;
       }
-      const customIgnored = getCustomIgnoredIdentifiers();
+      const options = getTransformerOptions();
       const isComponent = ["vue", "svelte", "astro"].includes(
         document.languageId
       );
@@ -98,8 +100,8 @@ export function activate(context: vscode.ExtensionContext): void {
           for (const sel of activeSelections) {
             const selectedText = document.getText(sel);
             const processed = isComponent
-              ? transformComponentDocument(selectedText, customIgnored)
-              : transformSourceCode(selectedText, customIgnored);
+              ? transformComponentDocument(selectedText, options)
+              : transformSourceCode(selectedText, options);
             if (processed !== selectedText) {
               editBuilder.replace(sel, processed);
               hasChanges = true;
@@ -247,10 +249,17 @@ export function isSupportedDocument(document: vscode.TextDocument): boolean {
   return SUPPORTED_LANGUAGES.includes(document.languageId);
 }
 
-function getCustomIgnoredIdentifiers(): Set<string> {
+export function getTransformerOptions(): TransformerOptions {
   const config = vscode.workspace.getConfiguration("autoOptionalChainer");
   const list = config.get<string[]>("ignoredIdentifiers", []);
-  return new Set(list);
+  const chainInvocations = config.get<boolean>(
+    "chainOptionalInvocations",
+    false
+  );
+  return {
+    customIgnored: new Set(list),
+    chainOptionalInvocations: chainInvocations,
+  };
 }
 
 export function deactivate(): void {}
@@ -267,8 +276,8 @@ export function getDocumentRangeTransformEdits(
   range: vscode.Range
 ): vscode.TextEdit[] {
   const selectedText = document.getText(range);
-  const customIgnored = getCustomIgnoredIdentifiers();
-  const processed = transformSourceCode(selectedText, customIgnored);
+  const options = getTransformerOptions();
+  const processed = transformSourceCode(selectedText, options);
 
   if (processed === selectedText) {
     return [];
@@ -334,11 +343,11 @@ export function getDocumentTransformEdits(
   document: vscode.TextDocument
 ): vscode.TextEdit[] {
   const originalText = document.getText();
-  const customIgnored = getCustomIgnoredIdentifiers();
+  const options = getTransformerOptions();
   const isComponent = ["vue", "svelte", "astro"].includes(document.languageId);
   const processed = isComponent
-    ? transformComponentDocument(originalText, customIgnored)
-    : transformSourceCode(originalText, customIgnored);
+    ? transformComponentDocument(originalText, options)
+    : transformSourceCode(originalText, options);
 
   return computeGranularTextEdits(document, originalText, processed);
 }
@@ -400,7 +409,7 @@ export class OptionalChainingCodeActionProvider
     }
 
     const actions: vscode.CodeAction[] = [];
-    const customIgnored = getCustomIgnoredIdentifiers();
+    const options = getTransformerOptions();
 
     // 1. Diagnostics-driven Quick Fixes:
     // Match TypeScript diagnostics: TS2532, TS18048, TS2533, or null/undefined error messages
@@ -424,7 +433,7 @@ export class OptionalChainingCodeActionProvider
     for (const diagnostic of tsNullDiagnostics) {
       const line = document.lineAt(diagnostic.range.start.line);
       const lineText = line.text;
-      const transformedLine = transformSourceCode(lineText, customIgnored);
+      const transformedLine = transformSourceCode(lineText, options);
 
       if (transformedLine !== lineText) {
         const action = new vscode.CodeAction(
@@ -446,7 +455,7 @@ export class OptionalChainingCodeActionProvider
         ? document.lineAt(range.start.line).range
         : range;
       const text = document.getText(targetRange);
-      const transformed = transformSourceCode(text, customIgnored);
+      const transformed = transformSourceCode(text, options);
 
       if (transformed !== text) {
         const action = new vscode.CodeAction(

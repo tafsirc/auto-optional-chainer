@@ -69,6 +69,11 @@
           },
           "default": [],
           "description": "Custom identifiers or global singletons to ignore during optional chaining"
+        },
+        "autoOptionalChainer.chainOptionalInvocations": {
+          "type": "boolean",
+          "default": false,
+          "description": "Optionally chain function calls on properties (e.g. obj?.method?.())"
         }
       }
     },
