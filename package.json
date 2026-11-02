@@ -28,10 +28,15 @@
     "javascript",
     "vue",
     "svelte",
-    "astro"
+    "astro",
+    "web"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
+  "browser": "./out/extension.js",
+  "bin": {
+    "auto-optional-chainer": "./bin/auto-optional-chainer.js"
+  },
   "contributes": {
     "commands": [
       {
@@ -60,6 +65,11 @@
           "default": false,
           "description": "Enable keyboard shortcut for applying optional chaining"
         },
+        "autoOptionalChainer.showNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notification toasts after applying optional chaining"
+        },
         "autoOptionalChainer.ignoreThis": {
           "type": "boolean",
           "default": true,
@@ -72,6 +82,11 @@
           },
           "default": [],
           "description": "Custom identifiers or global singletons to ignore during optional chaining"
+        },
+        "autoOptionalChainer.chainOptionalInvocations": {
+          "type": "boolean",
+          "default": false,
+          "description": "Optionally chain function calls on properties (e.g. obj?.method?.())"
         }
       }
     },
@@ -82,7 +97,21 @@
         "mac": "cmd+shift+o",
         "when": "editorTextFocus && config.autoOptionalChainer.enableShortcut"
       }
-    ]
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "AutoOptionalChainer.applyToSelection",
+          "when": "editorHasSelection && editorTextFocus && editorLangId =~ /^(javascript|typescript|javascriptreact|typescriptreact|vue|svelte|astro)$/",
+          "group": "modification@1"
+        },
+        {
+          "command": "AutoOptionalChainer.applyOptionalChaining",
+          "when": "editorTextFocus && editorLangId =~ /^(javascript|typescript|javascriptreact|typescriptreact|vue|svelte|astro)$/",
+          "group": "modification@2"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -99,7 +128,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
-    "@types/node": "20.x",
+    "@types/node": "26.x",
     "@types/vscode": "^1.96.0",
     "@typescript-eslint/eslint-plugin": "^8.71.2",
     "@typescript-eslint/parser": "^8.71.2",
