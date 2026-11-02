@@ -8,6 +8,11 @@ import {
   transformSourceCode,
   isSupportedDocument,
   isDocumentExcluded,
+  getDocumentTransformEdits,
+  getDocumentRangeTransformEdits,
+  computeGranularTextEdits,
+  OptionalChainingCodeActionProvider,
+  SUPPORTED_LANGUAGES,
 } from "../extension";
 
 // Mock the vscode.window.activeTextEditor
@@ -20,7 +25,12 @@ function createMockDocument(
   languageId: string = "typescript"
 ): vscode.TextDocument {
   return {
-    getText: () => content,
+    getText: (range?: vscode.Range) => {
+      if (range) {
+        return content.slice(range.start.character, range.end.character);
+      }
+      return content;
+    },
     languageId: languageId,
     uri: vscode.Uri.file("test.ts"),
     version: 1,
@@ -485,6 +495,178 @@ suite("AutoOptionalChainer Extension Test Suite", () => {
       assert.ok(processed.includes("person.address.street =")); // Assignment should not be changed
       assert.ok(processed.includes("user?.settings?.enabled"));
       assert.ok(processed.includes("user?.name"));
+    });
+  });
+
+  // Test suite for Document Transformation Edits (Pre-Save & Formatting)
+  suite("Document Transform Edits", () => {
+    test("Should return replacement TextEdit when changes exist", () => {
+      const doc = createMockDocument("const x = user.profile.name;");
+      const edits = getDocumentTransformEdits(doc);
+      assert.strictEqual(edits.length, 1);
+      assert.strictEqual(edits[0].newText, "const x = user?.profile?.name;");
+    });
+
+    test("Should return empty array when no transformations are required", () => {
+      const doc = createMockDocument("const x = user?.profile?.name;");
+      const edits = getDocumentTransformEdits(doc);
+      assert.strictEqual(edits.length, 0);
+    });
+
+    test("Should handle component document edits", () => {
+      const doc = createMockDocument(
+        "<script>const x = user.name;</script>",
+        "vue"
+      );
+      const edits = getDocumentTransformEdits(doc);
+      assert.strictEqual(edits.length, 1);
+      assert.strictEqual(
+        edits[0].newText,
+        "<script>const x = user?.name;</script>"
+      );
+    });
+
+    test("Should produce granular line-level diffs only for modified lines in multi-line documents", () => {
+      const multiLine = [
+        "const a = 1;",
+        "const x = user.profile.name;",
+        "const b = 2;",
+        "const y = post.author.title;",
+        "const c = 3;",
+      ].join("\n");
+      const doc = createMockDocument(multiLine);
+      const edits = getDocumentTransformEdits(doc);
+      assert.strictEqual(edits.length, 2);
+      assert.strictEqual(edits[0].range.start.line, 1);
+      assert.strictEqual(edits[0].newText, "const x = user?.profile?.name;");
+      assert.strictEqual(edits[1].range.start.line, 3);
+      assert.strictEqual(edits[1].newText, "const y = post?.author?.title;");
+    });
+
+    test("Should return replacement TextEdit for range formatting", () => {
+      const text = "const a = user.name; const b = person.age;";
+      const doc = createMockDocument(text);
+      const range = new vscode.Range(0, 0, 0, 20);
+      const edits = getDocumentRangeTransformEdits(doc, range);
+      assert.strictEqual(edits.length, 1);
+      assert.strictEqual(edits[0].newText, "const a = user?.name;");
+    });
+
+    test("Should return empty array when range requires no changes", () => {
+      const text = "const a = user?.name;";
+      const doc = createMockDocument(text);
+      const range = new vscode.Range(0, 0, 0, 21);
+      const edits = getDocumentRangeTransformEdits(doc, range);
+      assert.strictEqual(edits.length, 0);
+    });
+
+    test("SUPPORTED_LANGUAGES should contain expected web languages", () => {
+      assert.ok(SUPPORTED_LANGUAGES.includes("javascript"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("typescript"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("javascriptreact"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("typescriptreact"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("vue"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("svelte"));
+      assert.ok(SUPPORTED_LANGUAGES.includes("astro"));
+    });
+  });
+
+  // Test suite for Quick Fix Code Action Provider
+  suite("Quick Fix Code Action Provider", () => {
+    const provider = new OptionalChainingCodeActionProvider();
+
+    test("Should provide Quick Fix code action for TS2532 diagnostic", () => {
+      const doc = createMockDocument("const x = user.profile.name;");
+      const range = new vscode.Range(0, 10, 0, 14);
+      const diagnostic = new vscode.Diagnostic(
+        range,
+        "Object is possibly 'undefined'",
+        vscode.DiagnosticSeverity.Error
+      );
+      diagnostic.code = "2532";
+
+      const actions = provider.provideCodeActions(doc, range, {
+        diagnostics: [diagnostic],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+
+      assert.strictEqual(actions.length, 1);
+      assert.strictEqual(actions[0].title, "Add optional chaining (?.)");
+      assert.strictEqual(actions[0].kind, vscode.CodeActionKind.QuickFix);
+      assert.strictEqual(actions[0].isPreferred, true);
+      assert.strictEqual(actions[0].diagnostics?.[0], diagnostic);
+      const edits = actions[0].edit?.get(doc.uri);
+      assert.ok(edits && edits.length > 0);
+      assert.strictEqual(edits[0].newText, "const x = user?.profile?.name;");
+    });
+
+    test("Should provide Quick Fix code action for TS18048 and TS2533 diagnostics", () => {
+      const doc = createMockDocument("const val = data.items.length;");
+      const range = new vscode.Range(0, 12, 0, 17);
+      const diag18048 = new vscode.Diagnostic(
+        range,
+        "'data' is possibly 'undefined'",
+        vscode.DiagnosticSeverity.Error
+      );
+      diag18048.code = "TS18048";
+
+      const actions18048 = provider.provideCodeActions(doc, range, {
+        diagnostics: [diag18048],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+      assert.strictEqual(actions18048.length, 1);
+      assert.strictEqual(actions18048[0].title, "Add optional chaining (?.)");
+
+      const diag2533 = new vscode.Diagnostic(
+        range,
+        "Object is possibly 'null'",
+        vscode.DiagnosticSeverity.Error
+      );
+      diag2533.code = 2533;
+      const actions2533 = provider.provideCodeActions(doc, range, {
+        diagnostics: [diag2533],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+      assert.strictEqual(actions2533.length, 1);
+      assert.strictEqual(actions2533[0].title, "Add optional chaining (?.)");
+    });
+
+    test("Should provide Quick Fix code action on selection without diagnostics", () => {
+      const doc = createMockDocument("const x = user.profile.name;");
+      const range = new vscode.Range(0, 0, 0, 28);
+      const actions = provider.provideCodeActions(doc, range, {
+        diagnostics: [],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+      assert.strictEqual(actions.length, 1);
+      assert.strictEqual(actions[0].title, "Add optional chaining (?.)");
+      const edits = actions[0].edit?.get(doc.uri);
+      assert.ok(edits && edits.length > 0);
+      assert.strictEqual(edits[0].newText, "const x = user?.profile?.name;");
+    });
+
+    test("Should return empty array when code is already optional chained or language unsupported", () => {
+      const doc = createMockDocument("const x = user?.profile?.name;");
+      const range = new vscode.Range(0, 0, 0, 30);
+      const actions = provider.provideCodeActions(doc, range, {
+        diagnostics: [],
+        triggerKind: vscode.CodeActionTriggerKind.Invoke,
+      } as any);
+      assert.strictEqual(actions.length, 0);
+
+      const plaintextDoc = createMockDocument(
+        "const x = user.name;",
+        "plaintext"
+      );
+      const actionsPlaintext = provider.provideCodeActions(
+        plaintextDoc,
+        range,
+        {
+          diagnostics: [],
+          triggerKind: vscode.CodeActionTriggerKind.Invoke,
+        } as any
+      );
+      assert.strictEqual(actionsPlaintext.length, 0);
     });
   });
 });
