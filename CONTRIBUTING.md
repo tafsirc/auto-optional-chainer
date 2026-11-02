@@ -91,3 +91,31 @@ chore(deps): update dependency prettier to v3
 2. Open a Pull Request against the `main` branch of the upstream repository (`tafsirc/auto-optional-chainer`).
 3. Fill out the Pull Request template with details about your changes and link any related issues (e.g., `Closes #123`).
 4. Wait for CI checks and code review. Address any feedback requested by maintainers.
+
+## Release & Publishing Guidelines
+
+Automated releases are published via GitHub Actions (`.github/workflows/release.yml`) when a version tag matching `v*` is pushed.
+
+### Publishing Pipeline
+
+The release workflow performs:
+
+1. **Strict Verification**: Executes `npm run compile`, `npm run lint`, `npm run format:check`, and `npm run test:unit` to ensure quality standards.
+2. **Packaging**: Generates the `.vsix` distribution binary with `npx @vscode/vsce package --no-git-tag-version`.
+3. **GitHub Release**: Creates a GitHub release attaching the `.vsix` asset with auto-generated release notes.
+4. **VS Code Marketplace**: Publishes the extension with `npx @vscode/vsce publish -p $VSCE_PAT`.
+5. **Open VSX Registry**: Publishes the extension with `npx ovsx publish -p $OVSX_PAT`.
+
+### Deployment Secrets & Token Rotation
+
+The publishing jobs require two repository secrets in GitHub under **Settings > Secrets and variables > Actions**:
+
+- `VSCE_PAT`: Visual Studio Marketplace Personal Access Token with `Marketplace (Manage)` scope.
+- `OVSX_PAT`: Open VSX Access Token generated in your Open VSX profile settings.
+
+#### Token Rotation Steps:
+
+1. Generate a new PAT with the required publishing scope on the respective platform before the active token expires.
+2. In the GitHub repository, navigate to **Settings > Secrets and variables > Actions**.
+3. Update `VSCE_PAT` and/or `OVSX_PAT` with the new token values.
+4. Revoke the previous token on Azure DevOps / Open VSX.
