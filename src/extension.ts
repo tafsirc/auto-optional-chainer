@@ -61,7 +61,10 @@ export function activate(context: vscode.ExtensionContext): void {
       const document = editor.document;
       if (isSupportedDocument(document)) {
         await applyOptionalChaining(document);
-        vscode.window.showInformationMessage("Optional Chaining Applied");
+        const config = vscode.workspace.getConfiguration("autoOptionalChainer");
+        if (config.get<boolean>("showNotifications", true)) {
+          vscode.window.showInformationMessage("Optional Chaining Applied");
+        }
       } else {
         vscode.window.showErrorMessage("File type not supported");
       }
@@ -93,7 +96,6 @@ export function activate(context: vscode.ExtensionContext): void {
       const isComponent = ["vue", "svelte", "astro"].includes(
         document.languageId
       );
-
       let hasChanges = false;
       await editor.edit(
         (editBuilder) => {
@@ -111,9 +113,12 @@ export function activate(context: vscode.ExtensionContext): void {
         { undoStopBefore: true, undoStopAfter: true }
       );
       if (hasChanges) {
-        vscode.window.showInformationMessage(
-          "Optional Chaining Applied to Selection"
-        );
+        const config = vscode.workspace.getConfiguration("autoOptionalChainer");
+        if (config.get<boolean>("showNotifications", true)) {
+          vscode.window.showInformationMessage(
+            "Optional Chaining Applied to Selection"
+          );
+        }
       }
     }
   );

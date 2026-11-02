@@ -93,10 +93,12 @@ Alternatively, search for **Auto Optional Chainer** in the Extensions view (`Ctr
 
 This extension provides the following configurable settings in VS Code (`Ctrl+,` or `Cmd+,`):
 
-| Setting                              |   Type    | Default | Description                                                                              |
-| :----------------------------------- | :-------: | :-----: | :--------------------------------------------------------------------------------------- |
-| `autoOptionalChainer.applyOnSave`    | `boolean` | `false` | Automatically apply optional chaining when saving supported files                        |
-| `autoOptionalChainer.enableShortcut` | `boolean` | `false` | Enable keyboard shortcut (`Ctrl+Shift+O` / `Cmd+Shift+O`) for applying optional chaining |
+| Setting                                  |    Type    | Default | Description                                                                              |
+| :--------------------------------------- | :--------: | :-----: | :--------------------------------------------------------------------------------------- |
+| `autoOptionalChainer.applyOnSave`        | `boolean`  | `false` | Automatically apply optional chaining when saving supported files                        |
+| `autoOptionalChainer.enableShortcut`     | `boolean`  | `false` | Enable keyboard shortcut (`Ctrl+Shift+O` / `Cmd+Shift+O`) for applying optional chaining |
+| `autoOptionalChainer.showNotifications`  | `boolean`  | `true`  | Show notification toasts after applying optional chaining                                |
+| `autoOptionalChainer.ignoredIdentifiers` | `string[]` |  `[]`   | Custom identifiers or global singletons to ignore during optional chaining               |
 
 To modify these settings:
 
