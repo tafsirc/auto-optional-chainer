@@ -16,10 +16,10 @@ jobs:
     steps:
       - uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-message: |
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
             👋 Welcome to **Auto Optional Chainer**! Thank you for opening your first issue.
             Our maintainers will review it shortly. Please make sure you have included code snippets and environment details if reporting a bug.
-          pr-message: |
+          pr_message: |
             🎉 Welcome and thank you for opening your first pull request for **Auto Optional Chainer**!
             Please make sure tests and linter checks pass locally (`npm run test:unit`, `npm run lint`). A maintainer will review your contribution soon!

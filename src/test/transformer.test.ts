@@ -22,6 +22,21 @@ suite("Core Transformer Test Suite", () => {
     }
   });
 
+  test("Should preserve common Web and Node globals", () => {
+    assert.strictEqual(
+      processCodeSegment("const env = process.env.NODE_ENV;"),
+      "const env = process.env.NODE_ENV;"
+    );
+    assert.strictEqual(
+      processCodeSegment("window.location.href;"),
+      "window.location.href;"
+    );
+    assert.strictEqual(
+      processCodeSegment("Promise.resolve();"),
+      "Promise.resolve();"
+    );
+  });
+
   test("Should transform source code with string literal preservation", () => {
     const input =
       'const x = user.profile.name; const label = "user.profile.name";';
@@ -71,6 +86,22 @@ const name = user?.profile?.name;
     assert.strictEqual(transformComponentDocument(component), expected);
   });
 
+  test("Should transform Astro frontmatter code fences", () => {
+    const astroDoc = `---
+const user = await fetchUser();
+const name = user.profile.name;
+---
+<div>{name}</div>`;
+
+    const expected = `---
+const user = await fetchUser();
+const name = user?.profile?.name;
+---
+<div>{name}</div>`;
+
+    assert.strictEqual(transformComponentDocument(astroDoc), expected);
+  });
+
   test("Should not transform floating point number literals", () => {
     assert.strictEqual(
       processCodeSegment("const pi = 3.14;"),
@@ -108,6 +139,332 @@ const name = user?.profile?.name;
     assert.strictEqual(
       processCodeSegment("user.name = person.details.age"),
       "user.name = person?.details?.age"
+    );
+  });
+
+  test("Should handle compound assignments without transforming LHS", () => {
+    assert.strictEqual(
+      processCodeSegment("obj.count += 1;"),
+      "obj.count += 1;"
+    );
+    assert.strictEqual(
+      processCodeSegment("obj.total -= response.data.cost;"),
+      "obj.total -= response?.data?.cost;"
+    );
+    assert.strictEqual(
+      processCodeSegment("obj.config ||= {};"),
+      "obj.config ||= {};"
+    );
+    assert.strictEqual(
+      processCodeSegment("obj.name ??= 'Anonymous';"),
+      "obj.name ??= 'Anonymous';"
+    );
+    assert.strictEqual(
+      processCodeSegment("obj.flags &= mask.bit;"),
+      "obj.flags &= mask?.bit;"
+    );
+    assert.strictEqual(
+      processCodeSegment("state.nested.val *= factor.rate;"),
+      "state.nested.val *= factor?.rate;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value **= 2;"),
+      "item.value **= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value /= 2;"),
+      "item.value /= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value %= 2;"),
+      "item.value %= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value <<= 2;"),
+      "item.value <<= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value >>= 2;"),
+      "item.value >>= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value >>>= 2;"),
+      "item.value >>>= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value ^= 2;"),
+      "item.value ^= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value |= 2;"),
+      "item.value |= 2;"
+    );
+    assert.strictEqual(
+      processCodeSegment("item.value &&= true;"),
+      "item.value &&= true;"
+    );
+  });
+
+  test("Should not transform increment and decrement update expressions", () => {
+    assert.strictEqual(processCodeSegment("obj.count++;"), "obj.count++;");
+    assert.strictEqual(processCodeSegment("obj.count--;"), "obj.count--;");
+    assert.strictEqual(processCodeSegment("++obj.total;"), "++obj.total;");
+    assert.strictEqual(processCodeSegment("--obj.total;"), "--obj.total;");
+    assert.strictEqual(
+      processCodeSegment("user.profile.score++;"),
+      "user.profile.score++;"
+    );
+    assert.strictEqual(
+      processCodeSegment("++user.profile.score;"),
+      "++user.profile.score;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const next = ++counter.value + data.item.val;"),
+      "const next = ++counter.value + data?.item?.val;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const prev = counter.value-- - data.item.val;"),
+      "const prev = counter.value-- - data?.item?.val;"
+    );
+    assert.strictEqual(
+      processCodeSegment("x = a.b + obj.count++;"),
+      "x = a?.b + obj.count++;"
+    );
+    assert.strictEqual(
+      processCodeSegment("for (let i = 0; obj.count++ < 10; ) {}"),
+      "for (let i = 0; obj.count++ < 10; ) {}"
+    );
+  });
+
+  test("Should not transform class extends clauses", () => {
+    assert.strictEqual(
+      processCodeSegment("class User extends Base.Model {}"),
+      "class User extends Base.Model {}"
+    );
+    assert.strictEqual(
+      processCodeSegment("class User extends Base.Model.SubClass {}"),
+      "class User extends Base.Model.SubClass {}"
+    );
+    assert.strictEqual(
+      processCodeSegment("const User = class extends Base.Model {};"),
+      "const User = class extends Base.Model {};"
+    );
+    assert.strictEqual(
+      processCodeSegment("export class Admin extends Org.User.Base {}"),
+      "export class Admin extends Org.User.Base {}"
+    );
+    assert.strictEqual(
+      processCodeSegment("class Component extends Framework.UI.View<Props> {}"),
+      "class Component extends Framework.UI.View<Props> {}"
+    );
+    assert.strictEqual(
+      processCodeSegment("class A extends (B.C) {}"),
+      "class A extends (B.C) {}"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "class User extends Base.Model { getName() { return user.profile.name; } }"
+      ),
+      "class User extends Base.Model { getName() { return user?.profile?.name; } }"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "const a = foo.bar; class B extends C.D {} const b = baz.qux;"
+      ),
+      "const a = foo?.bar; class B extends C.D {} const b = baz?.qux;"
+    );
+  });
+
+  test("Should not transform TypeScript type annotations", () => {
+    assert.strictEqual(
+      processCodeSegment("function foo(x: MyNamespace.MyType) {}"),
+      "function foo(x: MyNamespace.MyType) {}"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "function foo(x: MyNamespace.MyType, y: Other.Type): Response.Data { return res.data.items; }"
+      ),
+      "function foo(x: MyNamespace.MyType, y: Other.Type): Response.Data { return res?.data?.items; }"
+    );
+    assert.strictEqual(
+      processCodeSegment("const res: Express.Request = req.data.value;"),
+      "const res: Express.Request = req?.data?.value;"
+    );
+    assert.strictEqual(
+      processCodeSegment("let a: Express.Request;"),
+      "let a: Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("type Handler = Express.Request;"),
+      "type Handler = Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const x = req as Express.Request;"),
+      "const x = req as Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const x = req.user as Express.Request;"),
+      "const x = req?.user as Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const x = req satisfies Express.Request;"),
+      "const x = req satisfies Express.Request;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const p: Promise<Express.Request> = fetchReq();"),
+      "const p: Promise<Express.Request> = fetchReq();"
+    );
+    assert.strictEqual(
+      processCodeSegment("const p = fetch<Express.Request>(url.endpoint);"),
+      "const p = fetch<Express.Request>(url?.endpoint);"
+    );
+    assert.strictEqual(
+      processCodeSegment("function isReq(x: any): x is Express.Request {}"),
+      "function isReq(x: any): x is Express.Request {}"
+    );
+  });
+
+  test("Should not transform new constructor expressions", () => {
+    assert.strictEqual(processCodeSegment("new a.b()"), "new a.b()");
+    assert.strictEqual(processCodeSegment("new a.b.c()"), "new a.b.c()");
+    assert.strictEqual(
+      processCodeSegment("const s = new service.Client(user.name);"),
+      "const s = new service.Client(user?.name);"
+    );
+    assert.strictEqual(
+      processCodeSegment("const x = new a.b() + new c.d();"),
+      "const x = new a.b() + new c.d();"
+    );
+    assert.strictEqual(
+      processCodeSegment("const item = new a.b().method();"),
+      "const item = new a.b()?.method();"
+    );
+  });
+
+  test("Should protect JavaScript meta-properties (import.meta, new.target, super)", () => {
+    assert.strictEqual(
+      processCodeSegment("console.log(import.meta.url);"),
+      "console.log(import.meta?.url);"
+    );
+    assert.strictEqual(
+      processCodeSegment("const meta = import.meta;"),
+      "const meta = import.meta;"
+    );
+    assert.strictEqual(
+      processCodeSegment("console.log(import.meta.env.VITE_API_URL);"),
+      "console.log(import.meta?.env?.VITE_API_URL);"
+    );
+    assert.strictEqual(
+      processCodeSegment("if (!new.target) throw new Error();"),
+      "if (!new.target) throw new Error();"
+    );
+    assert.strictEqual(
+      processCodeSegment("const name = new.target.name;"),
+      "const name = new.target?.name;"
+    );
+    assert.strictEqual(
+      processCodeSegment("super.render();"),
+      "super.render();"
+    );
+    assert.strictEqual(
+      processCodeSegment("super.data.items;"),
+      "super.data.items;"
+    );
+  });
+
+  test("Should protect namespaced JSX element tag names (<Modal.Header>)", () => {
+    assert.strictEqual(
+      processCodeSegment("<Modal.Header>Hello</Modal.Header>"),
+      "<Modal.Header>Hello</Modal.Header>"
+    );
+    assert.strictEqual(
+      processCodeSegment("<Modal.Header title={user.name} />"),
+      "<Modal.Header title={user?.name} />"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "<Card.Body.Item sub={details.title}>{user.address.city}</Card.Body.Item>"
+      ),
+      "<Card.Body.Item sub={details?.title}>{user?.address?.city}</Card.Body.Item>"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "return <Select.Option value={opt.id}>{opt.label}</Select.Option>;"
+      ),
+      "return <Select.Option value={opt?.id}>{opt?.label}</Select.Option>;"
+    );
+    assert.strictEqual(
+      processCodeSegment(
+        "const el = <Dropdown.Menu onClick={() => user.select()} />;"
+      ),
+      "const el = <Dropdown.Menu onClick={() => user?.select()} />;"
+    );
+    assert.strictEqual(
+      processCodeSegment("if (count < max.length) {}"),
+      "if (count < max?.length) {}"
+    );
+  });
+
+  test("Should support optional call invocation syntax when chainOptionalInvocations is enabled", () => {
+    assert.strictEqual(
+      processCodeSegment("props.onSuccess(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "props?.onSuccess?.(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("props?.onSuccess(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "props?.onSuccess?.(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("props?.onSuccess?.(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "props?.onSuccess?.(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("api.client.fetch(url, options);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "api?.client?.fetch?.(url, options);"
+    );
+    assert.strictEqual(
+      processCodeSegment("a.b().c();", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "a?.b?.()?.c?.();"
+    );
+    assert.strictEqual(
+      processCodeSegment("console.log(user.getName());", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "console.log(user?.getName?.());"
+    );
+    assert.strictEqual(
+      processCodeSegment("new service.Client(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "new service.Client(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("super.render(data);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "super.render(data);"
+    );
+
+    // Default remains disabled for backward compatibility
+    assert.strictEqual(
+      processCodeSegment("props.onSuccess(data);"),
+      "props?.onSuccess(data);"
+    );
+    assert.strictEqual(
+      processCodeSegment("props.onSuccess(data);", undefined, {
+        chainOptionalInvocations: false,
+      }),
+      "props?.onSuccess(data);"
     );
   });
 });

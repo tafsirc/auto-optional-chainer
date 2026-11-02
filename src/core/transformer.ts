@@ -18,7 +18,60 @@ export const ignoredIdentifiers = new Set<string>([
   "Array",
   "RegExp",
   "JSON",
+  "window",
+  "document",
+  "globalThis",
+  "global",
+  "process",
+  "navigator",
+  "location",
+  "Promise",
+  "Boolean",
+  "Symbol",
+  "Error",
+  "Map",
+  "Set",
+  "WeakMap",
+  "WeakSet",
+  "Intl",
+  "Reflect",
+  "Proxy",
+  "crypto",
+  "super",
 ]);
+
+/**
+ * Options for configuring transformation behavior
+ */
+export interface TransformerOptions {
+  customIgnored?: Set<string>;
+  chainOptionalInvocations?: boolean;
+}
+
+function resolveTransformerOptions(
+  customIgnoredOrOptions?: Set<string> | TransformerOptions,
+  options?: TransformerOptions
+): { customIgnored?: Set<string>; chainOptionalInvocations: boolean } {
+  if (customIgnoredOrOptions instanceof Set) {
+    return {
+      customIgnored: customIgnoredOrOptions,
+      chainOptionalInvocations: options?.chainOptionalInvocations ?? false,
+    };
+  }
+  if (customIgnoredOrOptions && typeof customIgnoredOrOptions === "object") {
+    return {
+      customIgnored: customIgnoredOrOptions.customIgnored,
+      chainOptionalInvocations:
+        customIgnoredOrOptions.chainOptionalInvocations ??
+        options?.chainOptionalInvocations ??
+        false,
+    };
+  }
+  return {
+    customIgnored: options?.customIgnored,
+    chainOptionalInvocations: options?.chainOptionalInvocations ?? false,
+  };
+}
 
 /**
  * Processes a code segment to add optional chaining operators
@@ -29,13 +82,19 @@ export const ignoredIdentifiers = new Set<string>([
  * - Ignoring built-in objects (e.g., console.log)
  *
  * @param segment The code segment to process
- * @param customIgnored Optional set of custom identifiers to ignore
+ * @param customIgnoredOrOptions Optional set of custom identifiers to ignore or options object
+ * @param options Optional configuration options
  * @returns The processed code segment with optional chaining added
  */
 export function processCodeSegment(
   segment: string,
-  customIgnored?: Set<string>
+  customIgnoredOrOptions?: Set<string> | TransformerOptions,
+  options?: TransformerOptions
 ): string {
+  const { customIgnored, chainOptionalInvocations } = resolveTransformerOptions(
+    customIgnoredOrOptions,
+    options
+  );
   const activeIgnored = customIgnored
     ? new Set([...ignoredIdentifiers, ...customIgnored])
     : ignoredIdentifiers;
@@ -47,10 +106,10 @@ export function processCodeSegment(
   while (current !== previous) {
     previous = current;
 
-    // Identify all property assignments in the code as ranges
+    // Identify all property assignments (standard and compound) in the code as ranges
     const assignmentRanges: Array<{ start: number; end: number }> = [];
     const assignmentRegex =
-      /(?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+\s*=(?!=)/g;
+      /(?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+\s*(?:\+|-|\*\*|\*|\/|%|<<|>>>|>>|&&|&|\|\||\||\^|\?\?)?=(?!=)/g;
     let match: RegExpExecArray | null;
 
     while ((match = assignmentRegex.exec(current)) !== null) {
@@ -60,8 +119,230 @@ export function processCodeSegment(
       });
     }
 
-    // Process property access (supporting word characters, brackets, and parentheses before the dot)
-    const dotAccessRegex = /((\b\w+|\)|\]))\s*\.\s*(\w+)/g;
+    // Identify update expressions (increment and decrement) in the code as ranges
+    // Optional chaining is invalid on the target of an update expression (ECMA-262)
+    const updateRanges: Array<{ start: number; end: number }> = [];
+    const postfixUpdateRegex =
+      /(?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+\s*(?:\+\+|--)/g;
+    while ((match = postfixUpdateRegex.exec(current)) !== null) {
+      updateRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    }
+
+    const prefixUpdateRegex =
+      /(?<![+\-])(?:\+\+|--)\s*((?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+)/g;
+    while ((match = prefixUpdateRegex.exec(current)) !== null) {
+      updateRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    }
+
+    // Identify class extends expressions
+    // Optional chaining is invalid in class extends / heritage clauses (ECMA-262)
+    const classExtendsRanges: Array<{ start: number; end: number }> = [];
+    const extendsRegex =
+      /\bextends\s*(?:\(\s*)?([\w$]+(?:\s*\[[^\]]*\]|\s*\.\s*[\w$]+)*)/g;
+    while ((match = extendsRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      classExtendsRanges.push({
+        start,
+        end: start + match[1].length,
+      });
+    }
+
+    // Identify TypeScript type annotation contexts
+    // Types represent static compile-time contracts and cannot contain optional chaining
+    const typeAnnotationRanges: Array<{ start: number; end: number }> = [];
+
+    // 1. "as" and "satisfies" assertions: expr as Namespace.Type, expr satisfies Namespace.Type
+    const asSatisfiesRegex =
+      /\b(?:as|satisfies)\s+([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = asSatisfiesRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 2. Type predicate: x is Namespace.Type
+    const isTypeRegex = /\bis\s+([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = isTypeRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 3. Whole "type" alias definitions: type X = ...;
+    const typeAliasRegex =
+      /\btype\s+[A-Za-z_$][\w$]*(?:<[^>]*>)?\s*=\s*([^;]+)(?:;|\n|$)/g;
+    while ((match = typeAliasRegex.exec(current)) !== null) {
+      typeAnnotationRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    }
+
+    // 4. Whole "interface" definitions: interface X { ... }
+    const interfaceRegex =
+      /\binterface\s+[A-Za-z_$][\w$]*(?:<[^>]*>)?(?:\s+extends\s+[^{]+)?\s*\{[\s\S]*?\}/g;
+    while ((match = interfaceRegex.exec(current)) !== null) {
+      typeAnnotationRanges.push({
+        start: match.index,
+        end: match.index + match[0].length,
+      });
+    }
+
+    // 5. Generic type arguments: <...Namespace.Type...> attached to an identifier or after a generic
+    const genericCallRegex = /(?:[A-Za-z_$][\w$]*|>\s*)\s*<([^{};=]+)>/g;
+    while ((match = genericCallRegex.exec(current)) !== null) {
+      const inner = match[1];
+      if (!/[=+\/*%&|^!]|(?:if|return|while|for)/.test(inner)) {
+        const typeRefRegex = /\b([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+        let innerMatch: RegExpExecArray | null;
+        const baseOffset = match.index + match[0].indexOf(inner);
+        while ((innerMatch = typeRefRegex.exec(inner)) !== null) {
+          typeAnnotationRanges.push({
+            start: baseOffset + innerMatch.index,
+            end: baseOffset + innerMatch.index + innerMatch[0].length,
+          });
+        }
+      }
+    }
+
+    // 6. Variable declarations with explicit type annotations: const/let/var x: Namespace.Type
+    const varTypeRegex =
+      /\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = varTypeRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 7. Member property declarations with access modifiers: public/private/protected/readonly/static x: Namespace.Type
+    const memberTypeRegex =
+      /\b(?:public|private|protected|readonly|static)\s+(?:readonly\s+)?[A-Za-z_$][\w$]*\s*\??:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = memberTypeRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 8. Function return types: ): Namespace.Type
+    const returnTypeRegex = /\)\s*:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = returnTypeRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      typeAnnotationRanges.push({ start, end: start + match[1].length });
+    }
+
+    // 9. Function parameter types: (x: Namespace.Type) or (x?: Namespace.Type)
+    const colonTypeRegex = /:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
+    while ((match = colonTypeRegex.exec(current)) !== null) {
+      const colonIndex = match.index;
+      const typeStart = colonIndex + match[0].indexOf(match[1]);
+      const typeLen = match[1].length;
+
+      const stack: string[] = [];
+      for (let i = 0; i < colonIndex; i++) {
+        const ch = current[i];
+        if (ch === "(" || ch === "{" || ch === "[") {
+          stack.push(ch);
+        } else if (ch === ")") {
+          if (stack[stack.length - 1] === "(") {
+            stack.pop();
+          }
+        } else if (ch === "}") {
+          if (stack[stack.length - 1] === "{") {
+            stack.pop();
+          }
+        } else if (ch === "]") {
+          if (stack[stack.length - 1] === "[") {
+            stack.pop();
+          }
+        }
+      }
+
+      if (stack.length > 0 && stack[stack.length - 1] === "(") {
+        let isTernary = false;
+        let depth = 0;
+        for (let i = colonIndex - 1; i >= 0; i--) {
+          const ch = current[i];
+          if (ch === ")" || ch === "}" || ch === "]") {
+            depth++;
+          } else if (ch === "(" || ch === "{" || ch === "[") {
+            if (depth === 0) {
+              break;
+            }
+            depth--;
+          } else if (depth === 0 && (ch === "," || ch === ";")) {
+            break;
+          } else if (ch === "?" && depth === 0) {
+            const between = current.slice(i + 1, colonIndex).trim();
+            if (between.length > 0) {
+              isTernary = true;
+            }
+            break;
+          }
+        }
+
+        if (!isTernary) {
+          typeAnnotationRanges.push({
+            start: typeStart,
+            end: typeStart + typeLen,
+          });
+        }
+      }
+    }
+
+    // Identify target constructor expressions in 'new' invocations
+    // Optional chaining is invalid in the callee of a new expression (ECMA-262)
+    const newExpressionRanges: Array<{ start: number; end: number }> = [];
+    const newRegex = /\bnew\s+([\w$]+(?:\s*\[[^\]]*\]|\s*\.\s*[\w$]+)*)/g;
+
+    while ((match = newRegex.exec(current)) !== null) {
+      if (match[1] === "target") {
+        continue;
+      }
+      const constructorOffset = match[0].indexOf(match[1]);
+      const start = match.index + constructorOffset;
+      newExpressionRanges.push({
+        start,
+        end: start + match[1].length,
+      });
+    }
+
+    // Identify JSX namespaced tag names (e.g. <Modal.Header> and </Modal.Header>)
+    // Component names in JSX cannot have optional chaining inserted
+    const jsxTagRanges: Array<{ start: number; end: number }> = [];
+    const jsxOpenTagRegex =
+      /(?:^|[^\w$<=])<\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)(?=[\s/>])/g;
+
+    while ((match = jsxOpenTagRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      jsxTagRanges.push({
+        start,
+        end: start + match[1].length,
+      });
+    }
+
+    const jsxCloseTagRegex = /<\/\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)\s*>/g;
+
+    while ((match = jsxCloseTagRegex.exec(current)) !== null) {
+      const offset = match[0].indexOf(match[1]);
+      const start = match.index + offset;
+      jsxTagRanges.push({
+        start,
+        end: start + match[1].length,
+      });
+    }
+
+    // Process property access (supporting word characters, brackets, parentheses, and meta-properties before the dot)
+    const dotAccessRegex =
+      /((\bimport\s*\.\s*meta|\bnew\s*\.\s*target|\b\w+|\)|\]))\s*\.\s*(\w+)/g;
     type PropertyMatch = {
       fullMatch: string;
       prefix: string;
@@ -85,15 +366,49 @@ export function processCodeSegment(
       const isAssignment = assignmentRanges.some(
         (range) => index >= range.start && index < range.end
       );
+      const isUpdate = updateRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
+      const isClassExtends = classExtendsRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
+      const isTypeAnnotation = typeAnnotationRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
+      const isNewConstructor = newExpressionRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
+      const isJsxTag = jsxTagRanges.some(
+        (range) => index >= range.start && index < range.end
+      );
+      // Meta-properties (import.meta, new.target) cannot have optional chaining inserted
+      const isMetaProperty =
+        (prefix === "import" && property === "meta") ||
+        (prefix === "new" && property === "target");
       // Exclude floating-point number literals like 3.14
       const isNumber = /^\d+$/.test(prefix);
 
-      if (!isAssignment && !isNumber && !activeIgnored.has(prefix)) {
+      if (
+        !isAssignment &&
+        !isUpdate &&
+        !isClassExtends &&
+        !isTypeAnnotation &&
+        !isNewConstructor &&
+        !isJsxTag &&
+        !isMetaProperty &&
+        !isNumber &&
+        !activeIgnored.has(prefix)
+      ) {
         const before = current.slice(0, index);
         const after = current.slice(index + fullMatch.length);
         current = before + `${prefix}?.${property}` + after;
       }
     });
+
+    if (chainOptionalInvocations) {
+      const methodCallRegex = /(\?\.\s*[A-Za-z_$][\w$]*)\s*(?<!\?\.)\(/g;
+      current = current.replace(methodCallRegex, "$1?.(");
+    }
   }
 
   return current;
@@ -295,17 +610,20 @@ export function splitByStringLiterals(text: string): Segment[] {
  * while preserving string literals and ignored identifiers.
  *
  * @param source Source code text
- * @param customIgnored Optional set of custom identifiers to ignore
+ * @param customIgnoredOrOptions Optional set of custom identifiers to ignore or options object
+ * @param options Optional configuration options
  * @returns Transformed source code string
  */
 export function transformSourceCode(
   source: string,
-  customIgnored?: Set<string>
+  customIgnoredOrOptions?: Set<string> | TransformerOptions,
+  options?: TransformerOptions
 ): string {
+  const resolved = resolveTransformerOptions(customIgnoredOrOptions, options);
   const segments = splitByStringLiterals(source);
   return segments
     .map((seg) =>
-      seg.isCode ? processCodeSegment(seg.text, customIgnored) : seg.text
+      seg.isCode ? processCodeSegment(seg.text, resolved) : seg.text
     )
     .join("");
 }
@@ -315,19 +633,34 @@ export function transformSourceCode(
  * specifically within <script> blocks while preserving templates and styles.
  *
  * @param source Component source code
- * @param customIgnored Optional custom identifiers to ignore
+ * @param customIgnoredOrOptions Optional set of custom identifiers to ignore or options object
+ * @param options Optional configuration options
  * @returns Transformed component code
  */
 export function transformComponentDocument(
   source: string,
-  customIgnored?: Set<string>
+  customIgnoredOrOptions?: Set<string> | TransformerOptions,
+  options?: TransformerOptions
 ): string {
+  const resolved = resolveTransformerOptions(customIgnoredOrOptions, options);
+  // Support Astro frontmatter delimited by ---
+  const frontmatterRegex = /^(---\r?\n)([\s\S]*?)(\r?\n---)/;
+  let transformed = source.replace(
+    frontmatterRegex,
+    (_match, openTag: string, frontmatterBody: string, closeTag: string) => {
+      const transformedBody = transformSourceCode(frontmatterBody, resolved);
+      return `${openTag}${transformedBody}${closeTag}`;
+    }
+  );
+
   const scriptRegex = /(<script\b[^>]*>)([\s\S]*?)(<\/script>)/gi;
-  return source.replace(
+  transformed = transformed.replace(
     scriptRegex,
     (_match, openTag: string, scriptBody: string, closeTag: string) => {
-      const transformedScript = transformSourceCode(scriptBody, customIgnored);
+      const transformedScript = transformSourceCode(scriptBody, resolved);
       return `${openTag}${transformedScript}${closeTag}`;
     }
   );
+
+  return transformed;
 }
