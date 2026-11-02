@@ -257,12 +257,17 @@ export function isSupportedDocument(document: vscode.TextDocument): boolean {
 export function getTransformerOptions(): TransformerOptions {
   const config = vscode.workspace.getConfiguration("autoOptionalChainer");
   const list = config.get<string[]>("ignoredIdentifiers", []);
+  const ignoreThis = config.get<boolean>("ignoreThis", true);
   const chainInvocations = config.get<boolean>(
     "chainOptionalInvocations",
     false
   );
+  const customIgnored = new Set(list);
+  if (ignoreThis) {
+    customIgnored.add("this");
+  }
   return {
-    customIgnored: new Set(list),
+    customIgnored,
     chainOptionalInvocations: chainInvocations,
   };
 }
