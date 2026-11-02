@@ -232,6 +232,32 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 }
 
+export function isDocumentExcluded(document: vscode.TextDocument): boolean {
+  const config = vscode.workspace.getConfiguration("autoOptionalChainer");
+  const patterns = config.get<string[]>("exclude", [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/out/**",
+    "**/*.d.ts",
+    "**/*.min.js",
+  ]);
+  const filePath = (document.uri?.fsPath || document.fileName || "").replace(
+    /\\/g,
+    "/"
+  );
+  return patterns.some((pattern) => {
+    const escaped = pattern
+      .replace(/[.+^${}()|[\]\\]/g, "\\$&")
+      .replace(/\*\*/g, ".*")
+      .replace(/(?<!\.)\*/g, "[^/]*");
+    try {
+      return new RegExp(escaped).test(filePath);
+    } catch {
+      return false;
+    }
+  });
+}
+
 /**
  * List of supported language identifiers for optional chaining transformation
  */
@@ -251,6 +277,9 @@ export const SUPPORTED_LANGUAGES: string[] = [
  * @returns true if the document is a JavaScript or TypeScript file (including React variants)
  */
 export function isSupportedDocument(document: vscode.TextDocument): boolean {
+  if (isDocumentExcluded(document)) {
+    return false;
+  }
   return SUPPORTED_LANGUAGES.includes(document.languageId);
 }
 
