@@ -385,6 +385,8 @@ export function processCodeSegment(
       const isMetaProperty =
         (prefix === "import" && property === "meta") ||
         (prefix === "new" && property === "target");
+      // Member access on 'super' cannot receive optional chaining in ECMAScript (Issue #158)
+      const isSuper = prefix === "super";
       // Exclude floating-point number literals like 3.14
       const isNumber = /^\d+$/.test(prefix);
 
@@ -396,6 +398,7 @@ export function processCodeSegment(
         !isNewConstructor &&
         !isJsxTag &&
         !isMetaProperty &&
+        !isSuper &&
         !isNumber &&
         !activeIgnored.has(prefix)
       ) {
