@@ -29,6 +29,9 @@ jobs:
           npm run compile
           npm run lint
 
+      - name: Check code formatting
+        run: npm run format:check
+
       - name: Run unit test suite
         run: npm run test:unit
 
@@ -44,3 +47,15 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to VS Code Marketplace
+        if: env.VSCE_PAT != ''
+        run: npx @vscode/vsce publish -p $VSCE_PAT
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX Registry
+        if: env.OVSX_PAT != ''
+        run: npx ovsx publish -p $OVSX_PAT
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
