@@ -5,6 +5,8 @@
  * Completely independent of the VS Code API.
  */
 
+import * as ts from "typescript";
+
 // List of built-in JavaScript objects and commonly used globals
 // These are skipped during optional chaining transformation to prevent unnecessary changes
 export const ignoredIdentifiers = new Set<string>([
@@ -99,325 +101,186 @@ export function processCodeSegment(
     ? new Set([...ignoredIdentifiers, ...customIgnored])
     : ignoredIdentifiers;
 
-  let current = segment;
-  let previous = "";
+  const source = ts.createSourceFile(
+    "segment.tsx",
+    segment,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  );
+  const insertions = new Map<number, string>();
 
-  // Iteratively process chained properties (e.g., a.b.c -> a?.b?.c)
-  while (current !== previous) {
-    previous = current;
-
-    // Identify all property assignments (standard and compound) in the code as ranges
-    const assignmentRanges: Array<{ start: number; end: number }> = [];
-    const assignmentRegex =
-      /(?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+\s*(?:\+|-|\*\*|\*|\/|%|<<|>>>|>>|&&|&|\|\||\||\^|\?\?)?=(?!=)/g;
-    let match: RegExpExecArray | null;
-
-    while ((match = assignmentRegex.exec(current)) !== null) {
-      assignmentRanges.push({
-        start: match.index,
-        end: match.index + match[0].length,
-      });
+  // Walk the parsed syntax so type nodes, JSX tag names, and literals are never
+  // mistaken for runtime property accesses. Insertions preserve all source trivia.
+  const isWriteTarget = (node: ts.Node): boolean => {
+    let target = node;
+    while (
+      target.parent &&
+      (ts.isPropertyAccessExpression(target.parent) ||
+        ts.isElementAccessExpression(target.parent)) &&
+      target.parent.expression === target
+    ) {
+      target = target.parent;
     }
+    const parent = target.parent;
+    return (
+      !!parent &&
+      ((ts.isBinaryExpression(parent) &&
+        parent.left === target &&
+        parent.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        parent.operatorToken.kind <= ts.SyntaxKind.LastAssignment) ||
+        (ts.isPrefixUnaryExpression(parent) &&
+          (parent.operator === ts.SyntaxKind.PlusPlusToken ||
+            parent.operator === ts.SyntaxKind.MinusMinusToken)) ||
+        (ts.isPostfixUnaryExpression(parent) &&
+          (parent.operator === ts.SyntaxKind.PlusPlusToken ||
+            parent.operator === ts.SyntaxKind.MinusMinusToken)))
+    );
+  };
 
-    // Identify update expressions (increment and decrement) in the code as ranges
-    // Optional chaining is invalid on the target of an update expression (ECMA-262)
-    const updateRanges: Array<{ start: number; end: number }> = [];
-    const postfixUpdateRegex =
-      /(?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+\s*(?:\+\+|--)/g;
-    while ((match = postfixUpdateRegex.exec(current)) !== null) {
-      updateRanges.push({
-        start: match.index,
-        end: match.index + match[0].length,
-      });
+  const isConstructorTarget = (node: ts.Node): boolean => {
+    let target = node;
+    while (
+      target.parent &&
+      (ts.isPropertyAccessExpression(target.parent) ||
+        ts.isElementAccessExpression(target.parent)) &&
+      target.parent.expression === target
+    ) {
+      target = target.parent;
     }
+    return (
+      !!target.parent &&
+      ts.isNewExpression(target.parent) &&
+      target.parent.expression === target
+    );
+  };
 
-    const prefixUpdateRegex =
-      /(?<![+\-])(?:\+\+|--)\s*((?:\b[\w$]+(?:\s*\[[^\]]+\]|\([^)]*\))*\s*\.)+\s*[\w$]+)/g;
-    while ((match = prefixUpdateRegex.exec(current)) !== null) {
-      updateRanges.push({
-        start: match.index,
-        end: match.index + match[0].length,
-      });
-    }
-
-    // Identify class extends expressions
-    // Optional chaining is invalid in class extends / heritage clauses (ECMA-262)
-    const classExtendsRanges: Array<{ start: number; end: number }> = [];
-    const extendsRegex =
-      /\bextends\s*(?:\(\s*)?([\w$]+(?:\s*\[[^\]]*\]|\s*\.\s*[\w$]+)*)/g;
-    while ((match = extendsRegex.exec(current)) !== null) {
-      const offset = match[0].indexOf(match[1]);
-      const start = match.index + offset;
-      classExtendsRanges.push({
-        start,
-        end: start + match[1].length,
-      });
-    }
-
-    // Identify TypeScript type annotation contexts
-    // Types represent static compile-time contracts and cannot contain optional chaining
-    const typeAnnotationRanges: Array<{ start: number; end: number }> = [];
-
-    // 1. "as" and "satisfies" assertions: expr as Namespace.Type, expr satisfies Namespace.Type
-    const asSatisfiesRegex =
-      /\b(?:as|satisfies)\s+([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
-    while ((match = asSatisfiesRegex.exec(current)) !== null) {
-      const offset = match[0].indexOf(match[1]);
-      const start = match.index + offset;
-      typeAnnotationRanges.push({ start, end: start + match[1].length });
-    }
-
-    // 2. Type predicate: x is Namespace.Type
-    const isTypeRegex = /\bis\s+([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
-    while ((match = isTypeRegex.exec(current)) !== null) {
-      const offset = match[0].indexOf(match[1]);
-      const start = match.index + offset;
-      typeAnnotationRanges.push({ start, end: start + match[1].length });
-    }
-
-    // 3. Whole "type" alias definitions: type X = ...;
-    const typeAliasRegex =
-      /\btype\s+[A-Za-z_$][\w$]*(?:<[^>]*>)?\s*=\s*([^;]+)(?:;|\n|$)/g;
-    while ((match = typeAliasRegex.exec(current)) !== null) {
-      typeAnnotationRanges.push({
-        start: match.index,
-        end: match.index + match[0].length,
-      });
-    }
-
-    // 4. Whole "interface" definitions: interface X { ... }
-    const interfaceRegex =
-      /\binterface\s+[A-Za-z_$][\w$]*(?:<[^>]*>)?(?:\s+extends\s+[^{]+)?\s*\{[\s\S]*?\}/g;
-    while ((match = interfaceRegex.exec(current)) !== null) {
-      typeAnnotationRanges.push({
-        start: match.index,
-        end: match.index + match[0].length,
-      });
-    }
-
-    // 5. Generic type arguments: <...Namespace.Type...> attached to an identifier or after a generic
-    const genericCallRegex = /(?:[A-Za-z_$][\w$]*|>\s*)\s*<([^{};=]+)>/g;
-    while ((match = genericCallRegex.exec(current)) !== null) {
-      const inner = match[1];
-      if (!/[=+\/*%&|^!]|(?:if|return|while|for)/.test(inner)) {
-        const typeRefRegex = /\b([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
-        let innerMatch: RegExpExecArray | null;
-        const baseOffset = match.index + match[0].indexOf(inner);
-        while ((innerMatch = typeRefRegex.exec(inner)) !== null) {
-          typeAnnotationRanges.push({
-            start: baseOffset + innerMatch.index,
-            end: baseOffset + innerMatch.index + innerMatch[0].length,
-          });
-        }
+  const isHeritageExpression = (node: ts.Node): boolean => {
+    let current: ts.Node | undefined = node;
+    while (current && current !== source) {
+      if (
+        ts.isExpressionWithTypeArguments(current) &&
+        current.parent &&
+        ts.isHeritageClause(current.parent)
+      ) {
+        return true;
       }
+      current = current.parent;
     }
+    return false;
+  };
 
-    // 6. Variable declarations with explicit type annotations: const/let/var x: Namespace.Type
-    const varTypeRegex =
-      /\b(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
-    while ((match = varTypeRegex.exec(current)) !== null) {
-      const offset = match[0].indexOf(match[1]);
-      const start = match.index + offset;
-      typeAnnotationRanges.push({ start, end: start + match[1].length });
+  const baseExpression = (node: ts.Expression): ts.Expression => {
+    let current = node;
+    while (
+      ts.isPropertyAccessExpression(current) ||
+      ts.isElementAccessExpression(current) ||
+      ts.isCallExpression(current)
+    ) {
+      current = current.expression;
     }
+    return current;
+  };
 
-    // 7. Member property declarations with access modifiers: public/private/protected/readonly/static x: Namespace.Type
-    const memberTypeRegex =
-      /\b(?:public|private|protected|readonly|static)\s+(?:readonly\s+)?[A-Za-z_$][\w$]*\s*\??:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
-    while ((match = memberTypeRegex.exec(current)) !== null) {
-      const offset = match[0].indexOf(match[1]);
-      const start = match.index + offset;
-      typeAnnotationRanges.push({ start, end: start + match[1].length });
-    }
-
-    // 8. Function return types: ): Namespace.Type
-    const returnTypeRegex = /\)\s*:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
-    while ((match = returnTypeRegex.exec(current)) !== null) {
-      const offset = match[0].indexOf(match[1]);
-      const start = match.index + offset;
-      typeAnnotationRanges.push({ start, end: start + match[1].length });
-    }
-
-    // 9. Function parameter types: (x: Namespace.Type) or (x?: Namespace.Type)
-    const colonTypeRegex = /:\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)/g;
-    while ((match = colonTypeRegex.exec(current)) !== null) {
-      const colonIndex = match.index;
-      const typeStart = colonIndex + match[0].indexOf(match[1]);
-      const typeLen = match[1].length;
-
-      const stack: string[] = [];
-      for (let i = 0; i < colonIndex; i++) {
-        const ch = current[i];
-        if (ch === "(" || ch === "{" || ch === "[") {
-          stack.push(ch);
-        } else if (ch === ")") {
-          if (stack[stack.length - 1] === "(") {
-            stack.pop();
-          }
-        } else if (ch === "}") {
-          if (stack[stack.length - 1] === "{") {
-            stack.pop();
-          }
-        } else if (ch === "]") {
-          if (stack[stack.length - 1] === "[") {
-            stack.pop();
-          }
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isJsxOpeningElement(node) ||
+        ts.isJsxClosingElement(node) ||
+        ts.isJsxSelfClosingElement(node)) &&
+      node.tagName
+    ) {
+      // A namespaced JSX tag is syntax, not a property read.
+      node.forEachChild((child) => {
+        if (child !== node.tagName) {
+          visit(child);
         }
-      }
-
-      if (stack.length > 0 && stack[stack.length - 1] === "(") {
-        let isTernary = false;
-        let depth = 0;
-        for (let i = colonIndex - 1; i >= 0; i--) {
-          const ch = current[i];
-          if (ch === ")" || ch === "}" || ch === "]") {
-            depth++;
-          } else if (ch === "(" || ch === "{" || ch === "[") {
-            if (depth === 0) {
-              break;
+      });
+      return;
+    }
+    if (
+      ts.isPropertyAccessExpression(node) ||
+      ts.isElementAccessExpression(node)
+    ) {
+      const expression = node.expression;
+      const root = baseExpression(expression);
+      const ignoredRoot =
+        (ts.isIdentifier(root) &&
+          activeIgnored.has(root.text) &&
+          !ts.isCallExpression(expression)) ||
+        (root.kind === ts.SyntaxKind.ThisKeyword &&
+          expression === root &&
+          activeIgnored.has("this"));
+      const superRoot = root.kind === ts.SyntaxKind.SuperKeyword;
+      const hasSuperCall =
+        superRoot &&
+        (() => {
+          let current: ts.Expression = expression;
+          while (
+            ts.isPropertyAccessExpression(current) ||
+            ts.isElementAccessExpression(current) ||
+            ts.isCallExpression(current)
+          ) {
+            if (ts.isCallExpression(current)) {
+              return true;
             }
-            depth--;
-          } else if (depth === 0 && (ch === "," || ch === ";")) {
-            break;
-          } else if (ch === "?" && depth === 0) {
-            const between = current.slice(i + 1, colonIndex).trim();
-            if (between.length > 0) {
-              isTernary = true;
-            }
-            break;
+            current = current.expression;
           }
-        }
-
-        if (!isTernary) {
-          typeAnnotationRanges.push({
-            start: typeStart,
-            end: typeStart + typeLen,
-          });
-        }
-      }
-    }
-
-    // Identify target constructor expressions in 'new' invocations
-    // Optional chaining is invalid in the callee of a new expression (ECMA-262)
-    const newExpressionRanges: Array<{ start: number; end: number }> = [];
-    const newRegex = /\bnew\s+([\w$]+(?:\s*\[[^\]]*\]|\s*\.\s*[\w$]+)*)/g;
-
-    while ((match = newRegex.exec(current)) !== null) {
-      if (match[1] === "target") {
-        continue;
-      }
-      const constructorOffset = match[0].indexOf(match[1]);
-      const start = match.index + constructorOffset;
-      newExpressionRanges.push({
-        start,
-        end: start + match[1].length,
-      });
-    }
-
-    // Identify JSX namespaced tag names (e.g. <Modal.Header> and </Modal.Header>)
-    // Component names in JSX cannot have optional chaining inserted
-    const jsxTagRanges: Array<{ start: number; end: number }> = [];
-    const jsxOpenTagRegex =
-      /(?:^|[^\w$<=])<\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)(?=[\s/>])/g;
-
-    while ((match = jsxOpenTagRegex.exec(current)) !== null) {
-      const offset = match[0].indexOf(match[1]);
-      const start = match.index + offset;
-      jsxTagRanges.push({
-        start,
-        end: start + match[1].length,
-      });
-    }
-
-    const jsxCloseTagRegex = /<\/\s*([A-Za-z_$][\w$]*(?:\s*\.\s*[\w$]+)+)\s*>/g;
-
-    while ((match = jsxCloseTagRegex.exec(current)) !== null) {
-      const offset = match[0].indexOf(match[1]);
-      const start = match.index + offset;
-      jsxTagRanges.push({
-        start,
-        end: start + match[1].length,
-      });
-    }
-
-    // Process property access (supporting word characters, brackets, parentheses, and meta-properties before the dot)
-    const dotAccessRegex =
-      /((\bimport\s*\.\s*meta|\bnew\s*\.\s*target|\b\w+|\)|\]))\s*\.\s*(\w+)/g;
-    type PropertyMatch = {
-      fullMatch: string;
-      prefix: string;
-      property: string;
-      index: number;
-      length: number;
-    };
-    const allMatches: PropertyMatch[] = [];
-
-    while ((match = dotAccessRegex.exec(current)) !== null) {
-      allMatches.push({
-        fullMatch: match[0],
-        prefix: match[1],
-        property: match[3],
-        index: match.index,
-        length: match[0].length,
-      });
-      if (match[1] === "this") {
-        dotAccessRegex.lastIndex = match.index + match[1].length;
-      }
-    }
-
-    allMatches.reverse().forEach(({ fullMatch, prefix, property, index }) => {
-      const isAssignment = assignmentRanges.some(
-        (range) => index >= range.start && index < range.end
-      );
-      const isUpdate = updateRanges.some(
-        (range) => index >= range.start && index < range.end
-      );
-      const isClassExtends = classExtendsRanges.some(
-        (range) => index >= range.start && index < range.end
-      );
-      const isTypeAnnotation = typeAnnotationRanges.some(
-        (range) => index >= range.start && index < range.end
-      );
-      const isNewConstructor = newExpressionRanges.some(
-        (range) => index >= range.start && index < range.end
-      );
-      const isJsxTag = jsxTagRanges.some(
-        (range) => index >= range.start && index < range.end
-      );
-      // Meta-properties (import.meta, new.target) cannot have optional chaining inserted
-      const isMetaProperty =
-        (prefix === "import" && property === "meta") ||
-        (prefix === "new" && property === "target");
-      // Member access on 'super' cannot receive optional chaining in ECMAScript (Issue #158)
-      const isSuper = prefix === "super";
-      // Exclude floating-point number literals like 3.14
-      const isNumber = /^\d+$/.test(prefix);
+          return false;
+        })();
 
       if (
-        !isAssignment &&
-        !isUpdate &&
-        !isClassExtends &&
-        !isTypeAnnotation &&
-        !isNewConstructor &&
-        !isJsxTag &&
-        !isMetaProperty &&
-        !isSuper &&
-        !isNumber &&
-        !activeIgnored.has(prefix)
+        !node.questionDotToken &&
+        !ignoredRoot &&
+        (!superRoot || hasSuperCall) &&
+        !isWriteTarget(node) &&
+        !isConstructorTarget(node) &&
+        !isHeritageExpression(node)
       ) {
-        const before = current.slice(0, index);
-        const after = current.slice(index + fullMatch.length);
-        current = before + `${prefix}?.${property}` + after;
+        if (ts.isPropertyAccessExpression(node)) {
+          const dot = segment.lastIndexOf(".", node.name.getStart(source) - 1);
+          if (dot >= expression.end && dot >= 0) {
+            insertions.set(dot, "?");
+          }
+        } else if (!ts.isNumericLiteral(node.argumentExpression)) {
+          // Computed keys are valid optional accesses too.
+          const bracket = segment.indexOf("[", expression.end);
+          if (bracket !== -1 && bracket < node.end) {
+            insertions.set(bracket, "?.");
+          }
+        }
       }
-    });
-
-    if (chainOptionalInvocations) {
-      const methodCallRegex = /(\?\.\s*[A-Za-z_$][\w$]*)\s*(?<!\?\.)\(/g;
-      current = current.replace(methodCallRegex, "$1?.(");
     }
-  }
 
-  return current;
+    if (
+      chainOptionalInvocations &&
+      ts.isCallExpression(node) &&
+      (ts.isPropertyAccessExpression(node.expression) ||
+        ts.isElementAccessExpression(node.expression)) &&
+      !node.questionDotToken &&
+      !isConstructorTarget(node.expression) &&
+      !isHeritageExpression(node) &&
+      baseExpression(node.expression).kind !== ts.SyntaxKind.SuperKeyword
+    ) {
+      const callee = node.expression;
+      const root = baseExpression(callee);
+      if (!(ts.isIdentifier(root) && activeIgnored.has(root.text))) {
+        const paren = segment.indexOf("(", callee.end);
+        if (paren !== -1 && paren < node.end) {
+          insertions.set(paren, "?.");
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+
+  let transformed = segment;
+  for (const [position, text] of [...insertions].sort((a, b) => b[0] - a[0])) {
+    transformed =
+      transformed.slice(0, position) + text + transformed.slice(position);
+  }
+  return transformed;
 }
 
 export type Segment = {
