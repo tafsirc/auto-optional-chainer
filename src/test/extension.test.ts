@@ -319,7 +319,7 @@ suite("AutoOptionalChainer Extension Test Suite", () => {
       const input = 'user["profile"].name';
       mockDocument = createMockDocument(input);
       const processed = processCodeSegment(input);
-      assert.strictEqual(processed, 'user["profile"]?.name');
+      assert.strictEqual(processed, 'user?.["profile"]?.name');
     });
 
     test("Should handle mixed property access patterns", async () => {
@@ -328,7 +328,7 @@ suite("AutoOptionalChainer Extension Test Suite", () => {
       const processed = processCodeSegment(input);
       assert.strictEqual(
         processed,
-        'users[index]?.friends[0]["profile"]?.name'
+        'users?.[index]?.friends[0]?.["profile"]?.name'
       );
     });
 

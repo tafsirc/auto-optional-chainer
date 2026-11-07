@@ -8,6 +8,29 @@ import {
 } from "../core/transformer";
 
 suite("Core Transformer Test Suite", () => {
+  test("Should transform computed property reads without changing numeric indexes", () => {
+    assert.strictEqual(
+      processCodeSegment("record[key].value"),
+      "record?.[key]?.value"
+    );
+    assert.strictEqual(processCodeSegment("users[0].name"), "users[0]?.name");
+    assert.strictEqual(
+      processCodeSegment("record[key] = source.value"),
+      "record[key] = source?.value"
+    );
+  });
+
+  test("Should preserve syntax and comments around AST property edits", () => {
+    assert.strictEqual(
+      processCodeSegment("user /* important */ . name"),
+      "user /* important */ ?. name"
+    );
+    assert.strictEqual(
+      processCodeSegment("const x = value?.item.name;"),
+      "const x = value?.item?.name;"
+    );
+  });
+
   test("Should transform simple dot access", () => {
     assert.strictEqual(processCodeSegment("user.name"), "user?.name");
   });
