@@ -474,4 +474,59 @@ const name = user?.profile?.name;
       "props?.onSuccess(data);"
     );
   });
+
+  test("Should prevent invalid optional chaining on 'super' references in classes (Issue #158)", () => {
+    // Direct method calls
+    assert.strictEqual(
+      processCodeSegment("super.render();"),
+      "super.render();"
+    );
+    assert.strictEqual(processCodeSegment("super.foo();"), "super.foo();");
+    assert.strictEqual(
+      processCodeSegment("super.method(arg1, arg2);"),
+      "super.method(arg1, arg2);"
+    );
+
+    // Property reads
+    assert.strictEqual(
+      processCodeSegment("const title = super.title;"),
+      "const title = super.title;"
+    );
+    assert.strictEqual(
+      processCodeSegment("const item = super.data.items;"),
+      "const item = super.data.items;"
+    );
+
+    // Class definition contexts
+    const classCode = `class SubClass extends BaseClass {
+  render() {
+    super.render();
+    return super.content;
+  }
+  handleClick() {
+    super.onClick && super.onClick();
+  }
+}`;
+    assert.strictEqual(processCodeSegment(classCode), classCode);
+
+    // With chainOptionalInvocations enabled
+    assert.strictEqual(
+      processCodeSegment("super.render();", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "super.render();"
+    );
+    assert.strictEqual(
+      processCodeSegment("super.method(arg);", undefined, {
+        chainOptionalInvocations: true,
+      }),
+      "super.method(arg);"
+    );
+
+    // Return value property access allows optional chaining on the returned object
+    assert.strictEqual(
+      processCodeSegment("super.getBase().id;"),
+      "super.getBase()?.id;"
+    );
+  });
 });
